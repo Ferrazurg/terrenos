@@ -254,6 +254,24 @@
   .cmp-summary .cmp-rank { font-family: var(--font-mono); background: var(--accent-bg); color: var(--accent); padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; margin: 0 2px; }
   .cmp-spread-warn { font-size: 11px; color: var(--amber); font-family: var(--font-mono); margin-top: 6px; display: flex; align-items: center; gap: 5px; }
 
+  /* TARJETA "MÁS BARATO DE LA COMUNA" */
+  .cmp-best { background: var(--green-bg); border: 1px solid var(--green-soft); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; cursor: pointer; transition: all 0.15s; display: flex; gap: 12px; align-items: flex-start; }
+  .cmp-best:hover { border-color: var(--green); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(29,122,95,0.15); }
+  .cmp-best.is-current { background: var(--accent-bg); border-color: var(--accent-soft); cursor: default; }
+  .cmp-best.is-current:hover { transform: none; box-shadow: none; border-color: var(--accent-soft); }
+  .cmp-best-icon { font-size: 18px; line-height: 1; flex-shrink: 0; margin-top: 1px; }
+  .cmp-best-body { flex: 1; min-width: 0; }
+  .cmp-best-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--green); margin-bottom: 4px; font-weight: 500; }
+  .cmp-best.is-current .cmp-best-label { color: var(--accent); }
+  .cmp-best-addr { font-family: var(--font-serif); font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.3; margin-bottom: 4px; letter-spacing: -0.01em; }
+  .cmp-best-stats { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .cmp-best-stats .b-ufm2 { color: var(--green); font-weight: 600; }
+  .cmp-best.is-current .cmp-best-stats .b-ufm2 { color: var(--accent); }
+  .cmp-best-vs { font-size: 11px; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(0,0,0,0.06); }
+  .cmp-best-vs strong { font-weight: 600; color: var(--red); }
+  .cmp-best-arrow { color: var(--text-faint); font-size: 14px; align-self: center; transition: transform 0.15s; }
+  .cmp-best:hover .cmp-best-arrow { transform: translateX(2px); color: var(--green); }
+
   .links-list { display: flex; flex-direction: column; gap: 6px; }
   .link-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border-radius: var(--radius); text-decoration: none; border: 1px solid var(--border); transition: all 0.15s; }
   .link-item:hover { border-color: var(--accent); background: var(--accent-bg); transform: translateY(-1px); }
@@ -991,14 +1009,64 @@ function buildComparisonHtml(t){
 
   // Ranking del terreno actual en UF/m² (1 = más barato)
   var rankInfo = '';
+  var bestCard = '';
   if(t._uf_m2>0 && statsUFm2){
     var ufm2List = enComuna
-      .map(function(x){return {id:x._id, val:x._uf_m2};})
+      .map(function(x){return {id:x._id, val:x._uf_m2, terreno:x};})
       .filter(function(x){return x.val>0;})
       .sort(function(a,b){return a.val-b.val;});
     var rank = ufm2List.findIndex(function(x){return x.id==t._id})+1;
     if(rank>0){
       rankInfo = '<div class="cmp-summary">Este terreno está en la posición <span class="cmp-rank">#'+rank+' de '+ufm2List.length+'</span> en UF/m² dentro de '+comuna+' (1 = más barato).</div>';
+    }
+
+    // Tarjeta del más barato de la comuna
+    var cheapest = ufm2List[0];
+    if(cheapest){
+      var b = cheapest.terreno;
+      var bAddr = g(b,'direccion') || 'Sin dirección';
+      var bUFm2 = b._uf_m2 || 0;
+      var bM2 = b._m2 ? Math.round(b._m2).toLocaleString('es-CL')+' m²' : '—';
+      var bUF = b._uf ? 'UF '+Math.round(b._uf).toLocaleString('es-CL') : '—';
+
+      if(b._id == t._id){
+        // El terreno actual ES el más barato
+        bestCard = '<div class="cmp-best is-current">'+
+          '<div class="cmp-best-icon">🏆</div>'+
+          '<div class="cmp-best-body">'+
+            '<div class="cmp-best-label">El más barato de '+comuna+'</div>'+
+            '<div class="cmp-best-addr">Este terreno lidera el ranking</div>'+
+            '<div class="cmp-best-stats">No hay otro con UF/m² menor en la base.</div>'+
+          '</div>'+
+        '</div>';
+      } else {
+        // Mostrar el más barato + comparación con el actual
+        var diffPct = t._uf_m2>0 ? Math.round(((t._uf_m2-bUFm2)/bUFm2)*100) : 0;
+        var diffText = '';
+        if(diffPct > 0){
+          diffText = '<div class="cmp-best-vs">Tu terreno está <strong>'+diffPct+'% más caro</strong> en UF/m².</div>';
+        } else if(diffPct < 0){
+          // No debería pasar porque el actual no es el más barato, pero por si acaso
+          diffText = '<div class="cmp-best-vs">Tu terreno está '+Math.abs(diffPct)+'% más barato en UF/m².</div>';
+        }
+
+        bestCard = '<div class="cmp-best" onclick="selectTerrain('+b._id+')">'+
+          '<div class="cmp-best-icon">🏆</div>'+
+          '<div class="cmp-best-body">'+
+            '<div class="cmp-best-label">El más barato de '+comuna+'</div>'+
+            '<div class="cmp-best-addr">'+bAddr+'</div>'+
+            '<div class="cmp-best-stats">'+
+              '<span class="b-ufm2">UF/m² '+(Math.round(bUFm2*10)/10)+'</span>'+
+              '<span>·</span>'+
+              '<span>'+bM2+'</span>'+
+              '<span>·</span>'+
+              '<span>'+bUF+'</span>'+
+            '</div>'+
+            diffText+
+          '</div>'+
+          '<div class="cmp-best-arrow">→</div>'+
+        '</div>';
+      }
     }
   }
 
@@ -1023,7 +1091,7 @@ function buildComparisonHtml(t){
     '</tr>';
   }
 
-  return rankInfo+
+  return bestCard+rankInfo+
     '<table class="cmp-table">'+
       '<thead><tr>'+
         '<th>Métrica</th>'+
