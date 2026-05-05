@@ -235,6 +235,25 @@
   .comment-box { background: var(--bg); border-left: 3px solid var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; font-size: 13px; line-height: 1.65; color: var(--text); }
   .estado-box { background: var(--amber-bg); border-left: 3px solid var(--amber); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; line-height: 1.55; color: var(--text); font-family: var(--font-sans); }
 
+  /* COMPARACIÓN VS COMUNA */
+  .cmp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cmp-table th { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .cmp-table th:first-child { text-align: left; }
+  .cmp-table td { padding: 10px 8px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+  .cmp-table td:first-child { color: var(--text-muted); }
+  .cmp-table td.num { text-align: right; font-family: var(--font-mono); }
+  .cmp-table td.terreno-val { font-weight: 600; color: var(--text); }
+  .cmp-table tr:last-child td { border-bottom: none; }
+  .cmp-delta { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+  .cmp-delta.cheap { background: var(--green-bg); color: var(--green); }
+  .cmp-delta.expensive { background: var(--red-bg); color: var(--red); }
+  .cmp-delta.flat { background: var(--bg); color: var(--text-muted); }
+
+  .cmp-summary { background: var(--bg); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; font-size: 12px; line-height: 1.55; color: var(--text); }
+  .cmp-summary strong { font-weight: 600; }
+  .cmp-summary .cmp-rank { font-family: var(--font-mono); background: var(--accent-bg); color: var(--accent); padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; margin: 0 2px; }
+  .cmp-spread-warn { font-size: 11px; color: var(--amber); font-family: var(--font-mono); margin-top: 6px; display: flex; align-items: center; gap: 5px; }
+
   .links-list { display: flex; flex-direction: column; gap: 6px; }
   .link-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border-radius: var(--radius); text-decoration: none; border: 1px solid var(--border); transition: all 0.15s; }
   .link-item:hover { border-color: var(--accent); background: var(--accent-bg); transform: translateY(-1px); }
@@ -906,6 +925,123 @@ function selectTerrain(id){
   if(t._lat&&t._lng) map.panTo([t._lat,t._lng],{animate:true});
 }
 
+/* ============================================================
+   COMPARACIÓN VS COMUNA
+   Genera el HTML de la sección que compara este terreno con
+   los demás terrenos de su misma comuna en la base.
+   ============================================================ */
+function buildComparisonHtml(t){
+  var comuna = g(t,'comuna');
+  if(!comuna) return '<div class="no-data">Sin comuna registrada</div>';
+
+  // Buscar otros terrenos de la misma comuna (incluyendo este)
+  var enComuna = allTerrains.filter(function(x){
+    return g(x,'comuna')===comuna;
+  });
+
+  // Si solo está este terreno, no hay con qué comparar
+  if(enComuna.length<=1){
+    return '<div class="no-data">Es el único terreno registrado en '+comuna+'. Necesitas al menos 2 para comparar.</div>';
+  }
+
+  // Función para calcular stats de una métrica
+  function statsDe(getter){
+    var vals = enComuna.map(getter).filter(function(v){return v>0;});
+    if(!vals.length) return null;
+    var sorted = vals.slice().sort(function(a,b){return a-b;});
+    var sum = vals.reduce(function(a,b){return a+b;},0);
+    return {
+      promedio: sum/vals.length,
+      mediana: sorted.length%2 ? sorted[Math.floor(sorted.length/2)] : (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2,
+      n: vals.length,
+      min: sorted[0],
+      max: sorted[sorted.length-1]
+    };
+  }
+
+  // Formatea un valor según métrica (con redondeo razonable)
+  function fmt(v, tipo){
+    if(!v && v!==0) return '—';
+    if(tipo==='m2') return Math.round(v).toLocaleString('es-CL')+' m²';
+    if(tipo==='uf') return 'UF '+Math.round(v).toLocaleString('es-CL');
+    if(tipo==='ufm2') return (Math.round(v*10)/10).toLocaleString('es-CL');
+    return v;
+  }
+
+  // Calcula pill de delta (% de diferencia respecto a la mediana)
+  // Para precio: barato es bueno (verde), caro es malo (rojo)
+  // Para superficie: no hay "bueno" o "malo", solo gris informativo
+  function deltaPill(valor, ref, esPrecio){
+    if(!valor || !ref) return '<span class="cmp-delta flat">—</span>';
+    var diff = ((valor-ref)/ref)*100;
+    var absDiff = Math.abs(Math.round(diff));
+    var sign = diff>0 ? '+' : (diff<0 ? '−' : '');
+    var clase = 'flat';
+    if(esPrecio){
+      if(diff < -2) clase = 'cheap';
+      else if(diff > 2) clase = 'expensive';
+    }
+    if(absDiff===0) return '<span class="cmp-delta flat">=</span>';
+    return '<span class="cmp-delta '+clase+'">'+sign+absDiff+'%</span>';
+  }
+
+  var statsM2 = statsDe(function(x){return x._m2;});
+  var statsUF = statsDe(function(x){return x._uf;});
+  var statsUFm2 = statsDe(function(x){return x._uf_m2;});
+
+  // Ranking del terreno actual en UF/m² (1 = más barato)
+  var rankInfo = '';
+  if(t._uf_m2>0 && statsUFm2){
+    var ufm2List = enComuna
+      .map(function(x){return {id:x._id, val:x._uf_m2};})
+      .filter(function(x){return x.val>0;})
+      .sort(function(a,b){return a.val-b.val;});
+    var rank = ufm2List.findIndex(function(x){return x.id==t._id})+1;
+    if(rank>0){
+      rankInfo = '<div class="cmp-summary">Este terreno está en la posición <span class="cmp-rank">#'+rank+' de '+ufm2List.length+'</span> en UF/m² dentro de '+comuna+' (1 = más barato).</div>';
+    }
+  }
+
+  // Detectar si hay outliers (promedio y mediana muy separados en UF/m²)
+  var spreadWarn = '';
+  if(statsUFm2 && statsUFm2.promedio && statsUFm2.mediana){
+    var spread = Math.abs(statsUFm2.promedio - statsUFm2.mediana) / statsUFm2.mediana;
+    if(spread > 0.15){
+      spreadWarn = '<div class="cmp-spread-warn">⚠ Promedio y mediana difieren mucho ('+Math.round(spread*100)+'%). Hay outliers en la muestra.</div>';
+    }
+  }
+
+  // Construir filas de la tabla
+  function fila(label, valor, stats, tipo, esPrecio){
+    if(!stats) return '<tr><td>'+label+'</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>';
+    return '<tr>'+
+      '<td>'+label+'</td>'+
+      '<td class="num terreno-val">'+fmt(valor,tipo)+'</td>'+
+      '<td class="num">'+fmt(stats.promedio,tipo)+'</td>'+
+      '<td class="num">'+fmt(stats.mediana,tipo)+'</td>'+
+      '<td class="num">'+deltaPill(valor, stats.mediana, esPrecio)+'</td>'+
+    '</tr>';
+  }
+
+  return rankInfo+
+    '<table class="cmp-table">'+
+      '<thead><tr>'+
+        '<th>Métrica</th>'+
+        '<th>Este terreno</th>'+
+        '<th>Promedio</th>'+
+        '<th>Mediana</th>'+
+        '<th>vs mediana</th>'+
+      '</tr></thead>'+
+      '<tbody>'+
+        fila('Superficie', t._m2, statsM2, 'm2', false)+
+        fila('Precio total', t._uf, statsUF, 'uf', true)+
+        fila('UF / m²', t._uf_m2, statsUFm2, 'ufm2', true)+
+      '</tbody>'+
+    '</table>'+
+    spreadWarn+
+    '<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-top:8px">Comparación contra '+(enComuna.length-1)+' otro'+(enComuna.length-1!==1?'s':'')+' terreno'+(enComuna.length-1!==1?'s':'')+' de '+comuna+'</div>';
+}
+
 function fillDetail(t){
   var ds='—';
   if(t._fecha) ds=t._fecha.toLocaleDateString('es-CL',{year:'numeric',month:'long',day:'numeric'});
@@ -973,6 +1109,10 @@ function fillDetail(t){
         '<div class="stat-card"><div class="stat-label">UF / m²</div><div class="stat-value">'+(t._uf_m2||'—')+'</div></div>'+
         '<div class="stat-card"><div class="stat-label">Superficie</div><div class="stat-value">'+(t._m2?t._m2.toLocaleString()+' <span class="stat-unit">m²</span>':'—')+'</div></div>'+
       '</div>'+
+    '</div>'+
+    '<div>'+
+      '<div class="section-label">Comparación con la comuna</div>'+
+      buildComparisonHtml(t)+
     '</div>'+
     '<div>'+
       '<div class="section-label">Estado</div>'+estadoHtml+
