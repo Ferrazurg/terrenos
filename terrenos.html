@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terrenos — Análisis de Inversión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Fraunces:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #F5F2ED; --surface: #FDFCFA; --border: #E2DDD6; --border-strong: #C8C2B8;
+    --text: #1A1814; --text-muted: #7A7468; --text-faint: #ADA89F;
+
+    --green: #1D7A5F; --green-bg: #E3F2EC; --green-soft: #D2EADF;
+    --amber: #B26A00; --amber-bg: #FDF0D5; --amber-soft: #F9E5B8;
+    --red: #C0392B; --red-bg: #FDE8E4; --red-soft: #F8D5CF;
+    --accent: #2D5BE3; --accent-bg: #EAF0FE; --accent-soft: #D9E2FB;
+    --purple: #6B4FBB; --purple-bg: #EEE9FB;
+
+    --font-sans: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --font-serif: 'Fraunces', Georgia, serif;
+    --radius: 8px; --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; font-family: var(--font-sans); background: var(--bg); color: var(--text); }
+  #app { display: flex; height: 100vh; }
+
+  /* ============ LAYOUT PRINCIPAL ============ */
+  #app { display: block; position: relative; }
+
+  /* LENGÜETA (TAB) */
+  #panel-tab {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    z-index: 600; background: var(--surface); border: 1px solid var(--border); border-left: none;
+    border-radius: 0 var(--radius) var(--radius) 0; padding: 18px 10px;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.08); transition: all 0.2s;
+  }
+  #panel-tab:hover { padding-left: 14px; border-color: var(--accent); }
+  #panel-tab.hidden { transform: translateY(-50%) translateX(-100%); opacity: 0; pointer-events: none; }
+  #panel-tab .tab-label {
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-family: var(--font-sans); font-size: 12px; font-weight: 500; letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  #panel-tab .tab-count {
+    font-family: var(--font-mono); font-size: 10px; background: var(--accent); color: var(--surface);
+    padding: 2px 6px; border-radius: 10px; font-weight: 500;
+  }
+  #panel-tab .tab-arrow { color: var(--text-faint); font-size: 10px; margin-top: 2px; }
+
+  /* PANEL DESLIZABLE */
+  #sidebar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 370px;
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden; z-index: 500;
+    transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 2px 0 20px rgba(0,0,0,0);
+  }
+  #sidebar.open { transform: translateX(0); box-shadow: 2px 0 20px rgba(0,0,0,0.08); }
+  #sidebar.pinned { box-shadow: none; }
+
+  #sidebar-head {
+    padding: 16px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #sidebar-head .sh-left { display: flex; flex-direction: column; }
+  .app-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+  .app-title { font-family: var(--font-serif); font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
+  .app-title em { font-style: italic; color: var(--accent); font-weight: 400; }
+  #sidebar-head .sh-actions { display: flex; gap: 6px; }
+  .sh-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; cursor: pointer; color: var(--text-muted); transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+  .sh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .sh-btn.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .sh-btn svg { width: 14px; height: 14px; }
+
+  /* CONTROLES FLOTANTES SOBRE EL MAPA */
+  #map-controls {
+    position: absolute; top: 14px; left: 14px; z-index: 500;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; max-width: calc(100% - 60px);
+  }
+  #map-controls.shifted { left: 384px; }
+  #map-controls.shifted-pinned { left: 384px; }
+  .mc-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; transition: all 0.15s; }
+  .mc-wrap:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+  /* Search flotante */
+  #float-search-wrap { padding: 0 4px 0 10px; }
+  #float-search-wrap svg { width: 14px; height: 14px; color: var(--text-faint); margin-right: 6px; }
+  #float-search { border: none; background: transparent; outline: none; font-family: var(--font-sans); font-size: 13px; padding: 8px 4px; width: 180px; color: var(--text); }
+  #float-search::placeholder { color: var(--text-faint); }
+
+  /* Chips flotantes */
+  #float-filters { padding: 4px; gap: 2px; }
+  #float-filters .chip { font-size: 11px; font-family: var(--font-mono); padding: 4px 10px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.12s; }
+  #float-filters .chip:hover { background: var(--bg); color: var(--text); }
+  #float-filters .chip.active-todos { background: var(--text); color: var(--surface); }
+  #float-filters .chip.active-analizando { background: var(--amber-bg); color: var(--amber); }
+  #float-filters .chip.active-rechazado { background: var(--red-bg); color: var(--red); }
+
+  /* Botón de fechas + popover */
+  #date-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  #date-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #date-btn.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  #date-btn svg { width: 12px; height: 12px; }
+  #date-popover {
+    position: absolute; top: 50px; left: 0; z-index: 550;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 14px 16px; min-width: 260px; box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+    display: none; flex-direction: column; gap: 10px;
+  }
+  #date-popover.open { display: flex; }
+  #date-popover .date-filter-header { display: flex; align-items: center; justify-content: space-between; font-size: 10px; font-family: var(--font-mono); color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; }
+  .date-clear { font-size: 10px; font-family: var(--font-mono); background: none; border: none; color: var(--accent); cursor: pointer; padding: 2px 4px; text-transform: none; letter-spacing: 0; display: none; }
+  .date-clear.visible { display: inline; }
+  .date-clear:hover { text-decoration: underline; }
+  .date-inputs { display: flex; gap: 6px; align-items: center; }
+  .date-input { flex: 1; font-size: 12px; font-family: var(--font-mono); padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); outline: none; transition: all 0.15s; min-width: 0; }
+  .date-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+  .date-sep { font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); }
+  .date-presets { display: flex; gap: 4px; flex-wrap: wrap; }
+  .date-preset { font-size: 10px; font-family: var(--font-mono); padding: 3px 8px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.12s; }
+  .date-preset:hover { border-color: var(--accent); color: var(--accent); }
+  .date-preset.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+
+  /* Chip de filtros activos */
+  #active-filters-chip {
+    background: var(--accent-bg); border: 1px solid var(--accent-soft); border-radius: var(--radius);
+    padding: 6px 10px; font-family: var(--font-mono); font-size: 10px; color: var(--accent);
+    display: none; align-items: center; gap: 6px; cursor: pointer; transition: all 0.15s;
+  }
+  #active-filters-chip.visible { display: inline-flex; }
+  #active-filters-chip:hover { background: var(--accent); color: var(--surface); }
+  #active-filters-chip .close-x { font-size: 12px; line-height: 1; }
+
+  #list-meta { padding: 10px 18px; font-size: 11px; font-family: var(--font-mono); color: var(--text-faint); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  #count-text strong { color: var(--text); font-weight: 500; }
+  #refresh-btn { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 14px; padding: 2px 6px; border-radius: 4px; transition: all 0.15s; }
+  #refresh-btn:hover { color: var(--accent); background: var(--accent-bg); transform: rotate(90deg); }
+
+  /* LISTA AGRUPADA POR COMUNA */
+  #list-view { overflow-y: auto; flex: 1; }
+  #list-view::-webkit-scrollbar { width: 4px; }
+  #list-view::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .comuna-group { border-bottom: 1px solid var(--border); }
+  .comuna-header {
+    padding: 13px 18px; cursor: pointer; display: flex; align-items: center;
+    justify-content: space-between; transition: background 0.1s; user-select: none;
+  }
+  .comuna-header:hover { background: var(--bg); }
+  .comuna-header.expanded { background: var(--accent-bg); }
+  .comuna-header-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .comuna-arrow {
+    color: var(--text-muted); font-size: 10px; transition: transform 0.2s;
+    width: 12px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .comuna-header.expanded .comuna-arrow { transform: rotate(90deg); color: var(--accent); }
+  .comuna-name { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .comuna-header.expanded .comuna-name { color: var(--accent); }
+  .comuna-meta { display: flex; align-items: center; gap: 6px; }
+  .comuna-count { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); background: var(--bg); padding: 2px 8px; border-radius: 10px; }
+  .comuna-header.expanded .comuna-count { background: var(--surface); color: var(--accent); }
+  .comuna-mini-dots { display: flex; gap: 2px; }
+  .comuna-mini-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  .comuna-terrains { display: none; background: var(--surface); }
+  .comuna-terrains.expanded { display: block; }
+
+  .t-item { padding: 12px 18px 12px 32px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; display: flex; flex-direction: column; gap: 4px; border-left: 3px solid transparent; }
+  .t-item:last-child { border-bottom: none; }
+  .t-item:hover { background: var(--bg); }
+  .t-item.selected { background: var(--accent-bg); border-left-color: var(--accent); padding-left: 29px; }
+  .t-item.res-rechazado { border-left-color: var(--red-soft); }
+  .t-item.res-rechazado.selected { border-left-color: var(--red); }
+  .t-item.res-analizando { border-left-color: var(--amber-soft); }
+  .t-item.res-analizando.selected { border-left-color: var(--amber); }
+  .t-address { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .t-row { display: flex; align-items: center; gap: 8px; }
+  .t-stat { font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); }
+  .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border-strong); }
+
+  .result-pill { font-size: 10px; font-family: var(--font-mono); padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; font-weight: 500; }
+  .pill-analizando { background: var(--amber-bg); color: var(--amber); }
+  .pill-rechazado { background: var(--red-bg); color: var(--red); }
+  .pill-positivo { background: var(--green-bg); color: var(--green); }
+  .pill-default { background: var(--bg); color: var(--text-muted); }
+
+  .t-date { font-size: 10px; font-family: var(--font-mono); color: var(--text-faint); }
+
+  #loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; }
+  .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-state p { font-size: 12px; font-family: var(--font-mono); color: var(--text-faint); }
+
+  #detail-view { display: none; overflow-y: auto; flex: 1; }
+  #detail-view::-webkit-scrollbar { width: 4px; }
+  #detail-view::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  #detail-view.active { display: flex; flex-direction: column; }
+
+  #back-bar { padding: 10px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.1s; }
+  #back-bar:hover { background: var(--bg); }
+  #back-bar svg { flex-shrink: 0; color: var(--text-muted); transition: transform 0.15s; }
+  #back-bar:hover svg { transform: translateX(-2px); color: var(--accent); }
+  #back-bar span { font-size: 12px; font-family: var(--font-mono); color: var(--text-muted); }
+
+  #detail-head { padding: 20px; border-bottom: 1px solid var(--border); }
+  #detail-addr { font-family: var(--font-serif); font-size: 20px; font-weight: 500; line-height: 1.3; margin-bottom: 6px; letter-spacing: -0.01em; }
+  #detail-com { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 12px; }
+  #detail-status { display: inline-block; }
+
+  #detail-content { padding: 20px; display: flex; flex-direction: column; gap: 22px; }
+  .section-label { font-size: 10px; font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; font-weight: 500; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stats-grid.stats-grid-3 { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stats-grid.stats-grid-3 .stat-card { padding: 10px; }
+  .stats-grid.stats-grid-3 .stat-value { font-size: 16px; }
+  .stats-grid.stats-grid-3 .stat-unit { font-size: 10px; }
+  .stat-card { background: var(--bg); border-radius: var(--radius); padding: 12px; border: 1px solid transparent; transition: border-color 0.15s; }
+  .stat-card:hover { border-color: var(--border); }
+  .stat-card.accent { background: var(--accent-bg); }
+  .stat-card.accent .stat-label { color: var(--accent); opacity: 0.75; }
+  .stat-label { font-size: 10px; font-family: var(--font-mono); color: var(--text-faint); margin-bottom: 4px; letter-spacing: 0.05em; }
+  .stat-value { font-family: var(--font-serif); font-size: 20px; font-weight: 500; line-height: 1.2; letter-spacing: -0.01em; }
+  .stat-unit { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); font-weight: normal; }
+
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-key { color: var(--text-muted); }
+  .info-val { font-weight: 500; text-align: right; max-width: 55%; word-break: break-word; }
+
+  .comment-box { background: var(--bg); border-left: 3px solid var(--accent-soft); border-radius: var(--radius); padding: 14px 16px; font-size: 13px; line-height: 1.65; color: var(--text); }
+  .estado-box { background: var(--amber-bg); border-left: 3px solid var(--amber); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; line-height: 1.55; color: var(--text); font-family: var(--font-sans); }
+
+  .links-list { display: flex; flex-direction: column; gap: 6px; }
+  .link-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border-radius: var(--radius); text-decoration: none; border: 1px solid var(--border); transition: all 0.15s; }
+  .link-item:hover { border-color: var(--accent); background: var(--accent-bg); transform: translateY(-1px); }
+  .link-icon { width: 28px; height: 28px; border-radius: 6px; background: var(--accent-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .link-text { font-size: 12px; color: var(--accent); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link-arrow { color: var(--text-faint); font-size: 14px; transition: transform 0.15s; }
+  .link-item:hover .link-arrow { transform: translate(2px, -2px); color: var(--accent); }
+  .no-data { font-size: 12px; font-family: var(--font-mono); color: var(--text-faint); font-style: italic; }
+
+  /* ============ MAP + DASHBOARD BUTTON ============ */
+  #map-area { position: absolute; inset: 0; }
+  #map { width: 100%; height: 100%; }
+
+  #dashboard-toggle {
+    position: absolute; top: 14px; right: 14px; z-index: 600;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 14px; font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.15s;
+  }
+  #dashboard-toggle:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  #dashboard-toggle.open { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  #dashboard-toggle.open:hover { background: var(--text); border-color: var(--text); color: var(--surface); }
+  #dashboard-toggle.open .dt-badge { background: var(--surface); color: var(--accent); }
+  #dashboard-toggle svg { width: 14px; height: 14px; }
+  #dashboard-toggle .dt-badge { background: var(--accent); color: var(--surface); font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+
+  /* ============ DASHBOARD PANEL ============ */
+  #dashboard {
+    position: absolute; inset: 0; background: var(--bg); z-index: 400;
+    overflow-y: auto; display: none; flex-direction: column;
+  }
+  #dashboard.active { display: flex; }
+  #dashboard::-webkit-scrollbar { width: 6px; }
+  #dashboard::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  #dash-header {
+    position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 16px 160px 16px 28px; display: flex; align-items: center; justify-content: space-between;
+    z-index: 10;
+  }
+  #dash-header .dh-title { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+  #dash-header .dh-title em { font-style: italic; color: var(--accent); font-weight: 400; }
+  #dash-header .dh-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  #dash-body { padding: 24px 28px 40px; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+  .dash-section { margin-bottom: 32px; }
+  .dash-section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .dash-sec-num { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); letter-spacing: 0.1em; font-weight: 500; }
+  .dash-sec-title { font-family: var(--font-serif); font-size: 18px; font-weight: 500; letter-spacing: -0.01em; }
+  .dash-sec-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; transition: all 0.15s; }
+  .kpi-card:hover { border-color: var(--border-strong); }
+  .kpi-card.kpi-accent { background: var(--accent-bg); border-color: var(--accent-soft); }
+  .kpi-card.kpi-green { background: var(--green-bg); border-color: var(--green-soft); }
+  .kpi-card.kpi-amber { background: var(--amber-bg); border-color: var(--amber-soft); }
+  .kpi-card.kpi-red { background: var(--red-bg); border-color: var(--red-soft); }
+  .kpi-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .kpi-card.kpi-accent .kpi-label { color: var(--accent); }
+  .kpi-card.kpi-green .kpi-label { color: var(--green); }
+  .kpi-card.kpi-amber .kpi-label { color: var(--amber); }
+  .kpi-card.kpi-red .kpi-label { color: var(--red); }
+  .kpi-value { font-family: var(--font-serif); font-size: 28px; font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; }
+  .kpi-unit { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 3px; }
+  .kpi-note { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); margin-top: 6px; }
+  .kpi-delta { font-family: var(--font-mono); font-size: 11px; margin-top: 4px; display: inline-flex; align-items: center; gap: 3px; }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+  .kpi-delta.flat { color: var(--text-faint); }
+
+  /* Two-column layout for bars + evolution */
+  .dash-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 1100px) { .dash-two-col { grid-template-columns: 1fr; } }
+
+  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .dash-card-title { font-family: var(--font-serif); font-size: 16px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .dash-card-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); margin-bottom: 18px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  /* Bar chart (comunas) */
+  .bar-list { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: 110px 1fr 60px; gap: 10px; align-items: center; }
+  .bar-label { font-size: 12px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { background: var(--bg); height: 22px; border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); display: flex; align-items: center; padding-left: 8px; }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.amber { background: var(--amber); }
+  .bar-value { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-align: right; }
+
+  /* Corredor ranking */
+  .corr-empty { padding: 28px 20px; text-align: center; background: var(--bg); border-radius: var(--radius); }
+  .corr-empty-title { font-family: var(--font-serif); font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .corr-empty-text { font-size: 12px; color: var(--text-muted); line-height: 1.6; max-width: 420px; margin: 0 auto; }
+  .corr-empty-code { font-family: var(--font-mono); background: var(--surface); padding: 2px 6px; border-radius: 3px; color: var(--accent); border: 1px solid var(--border); }
+
+  .corr-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .corr-table th { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .corr-table th.num { text-align: right; }
+  .corr-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .corr-table td.num { text-align: right; font-family: var(--font-mono); }
+  .corr-table tr:last-child td { border-bottom: none; }
+  .corr-name { font-weight: 500; font-size: 13px; }
+  .corr-rank { display: inline-flex; width: 20px; height: 20px; background: var(--bg); border-radius: 50%; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); font-weight: 500; margin-right: 8px; }
+  .corr-rank.top { background: var(--accent-bg); color: var(--accent); }
+  .score-pill { font-family: var(--font-mono); font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; display: inline-block; min-width: 42px; text-align: center; }
+  .score-hi { background: var(--green-bg); color: var(--green); }
+  .score-mid { background: var(--amber-bg); color: var(--amber); }
+  .score-lo { background: var(--red-bg); color: var(--red); }
+
+  /* Evolución temporal */
+  .evo-chart { width: 100%; height: 200px; }
+  .evo-legend { display: flex; gap: 16px; font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); margin-top: 12px; justify-content: center; flex-wrap: wrap; }
+  .evo-legend span { display: flex; align-items: center; gap: 6px; }
+  .evo-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  /* Resultado donut */
+  .donut-wrap { display: flex; align-items: center; gap: 20px; }
+  .donut-svg { flex-shrink: 0; }
+  .donut-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .donut-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+  .donut-row-left { display: flex; align-items: center; gap: 8px; }
+  .donut-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .donut-name { color: var(--text); font-weight: 500; }
+  .donut-val { font-family: var(--font-mono); color: var(--text-muted); font-size: 11px; }
+
+  @media (max-width: 900px) {
+    #sidebar { width: 85vw; }
+    #map-controls.shifted { left: 14px; }
+    #dash-body { padding: 16px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    #float-search { width: 130px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- MAPA DE FONDO (siempre visible) -->
+  <div id="map-area">
+    <div id="map"></div>
+
+    <!-- CONTROLES FLOTANTES -->
+    <div id="map-controls">
+      <div class="mc-wrap" id="float-search-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+        <input id="float-search" type="text" placeholder="Buscar dirección, comuna…" oninput="onSearchInput()">
+      </div>
+      <div class="mc-wrap" id="float-filters">
+        <button class="chip active-todos" onclick="setFilter('todos',this)">Todos</button>
+        <button class="chip" onclick="setFilter('analizando',this)">Analizando</button>
+        <button class="chip" onclick="setFilter('rechazado',this)">Rechazado</button>
+      </div>
+      <div style="position:relative">
+        <button id="date-btn" onclick="toggleDatePopover()">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1"/><path d="M2 6h12M5 1v3M11 1v3"/></svg>
+          <span id="date-btn-label">Fechas</span>
+        </button>
+        <div id="date-popover">
+          <div class="date-filter-header">
+            <span>Rango de fechas</span>
+            <button class="date-clear" id="date-clear" onclick="clearDateFilter()">Limpiar</button>
+          </div>
+          <div class="date-inputs">
+            <input type="date" id="date-from" class="date-input" onchange="onDateChange()" aria-label="Desde">
+            <span class="date-sep">→</span>
+            <input type="date" id="date-to" class="date-input" onchange="onDateChange()" aria-label="Hasta">
+          </div>
+          <div class="date-presets">
+            <button class="date-preset" onclick="setDatePreset(7,this)">7 días</button>
+            <button class="date-preset" onclick="setDatePreset(30,this)">30 días</button>
+            <button class="date-preset" onclick="setDatePreset(90,this)">90 días</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTÓN DASHBOARD (toggle: abre/cierra) -->
+    <button id="dashboard-toggle" onclick="toggleDashboard()">
+      <span id="dt-icon-open" style="display:flex">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="6" height="6" rx="1"/><rect x="8.5" y="1.5" width="6" height="3" rx="1"/><rect x="8.5" y="5.5" width="6" height="9" rx="1"/><rect x="1.5" y="8.5" width="6" height="6" rx="1"/></svg>
+      </span>
+      <span id="dt-icon-close" style="display:none">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4l-8 8M4 4l8 8"/></svg>
+      </span>
+      <span id="dt-label">Dashboard</span>
+      <span class="dt-badge" id="dt-count">0</span>
+    </button>
+
+    <!-- PANEL DASHBOARD -->
+    <div id="dashboard">
+      <div id="dash-header">
+        <div>
+          <div class="dh-title">Dashboard<em>.</em></div>
+          <div class="dh-sub" id="dash-scope">— terrenos analizados</div>
+        </div>
+      </div>
+      <div id="dash-body"></div>
+    </div>
+  </div>
+
+  <!-- LENGÜETA -->
+  <div id="panel-tab" onclick="openSidebar()">
+    <span class="tab-arrow">▶</span>
+    <span class="tab-label">Terrenos</span>
+    <span class="tab-count" id="tab-count">0</span>
+  </div>
+
+  <!-- PANEL DESLIZABLE -->
+  <div id="sidebar">
+    <div id="sidebar-head">
+      <div class="sh-left">
+        <div class="app-label">Análisis de inversión</div>
+        <div class="app-title">Terrenos<em>.</em></div>
+      </div>
+      <div class="sh-actions">
+        <button class="sh-btn" id="pin-btn" onclick="togglePin()" title="Pinear panel">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l4 4-3 1-3 3-1-1-3 3 1-3-1-1 3-3 1-3z"/></svg>
+        </button>
+        <button class="sh-btn" onclick="closeSidebar()" title="Cerrar">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4l-8 8M4 4l8 8"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="list-meta">
+      <span id="count-text">Cargando…</span>
+      <button id="refresh-btn" onclick="loadData()" title="Actualizar datos">↻</button>
+    </div>
+    <div id="loading-state"><div class="spinner"></div><p>Cargando terrenos…</p></div>
+
+    <div id="list-view" style="display:none"></div>
+
+    <div id="detail-view">
+      <div id="back-bar" onclick="closeDetail()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2L4 7l5 5"/></svg>
+        <span>Volver a la lista</span>
+      </div>
+      <div id="detail-head">
+        <div id="detail-addr"></div>
+        <div id="detail-com"></div>
+        <span id="detail-status" class="result-pill"></span>
+      </div>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN GENERAL
+   ============================================================ */
+var SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzFlraYmTUl_kEI6pa9_AyN7KgwkxthhCCu6uRAQPe66tIJIZtuGYEgoQpyzXUqkyqt/exec';
+
+var COL = {
+  id:'id', fecha:'Fecha', direccion:'Dirección', comuna:'Comuna',
+  estado:'Estado', resultado:'Resultado', m2:'m2', uf_m2:'UF/m2',
+  uf:'UF', comentario:'Comentario', linkInfo:'Link Info', linkEval:'Link Evaluación',
+  corredor:'Corredor',
+  // Columnas de calidad de info (SI/NO). Si no existen en el Sheet, se tratan como NO.
+  infoFotos:'Fotos',
+  infoKmz:'KMZ',
+  infoPlano:'Plano',
+  infoCabida:'Cabida',
+  infoPresentacion:'Presentacion'
+};
+
+/* === PESOS DEL SCORE DE CORREDORES ===
+   Cambiar acá para ajustar la fórmula. Deben sumar 1.0 */
+var BROKER_WEIGHTS = {
+  volumen:  0.15,  // cuánto te manda
+  hitRate:  0.45,  // % que queda en Analizando (tu criterio de calidad)
+  calidad:  0.40   // qué tan completa viene la info técnica que te entrega
+};
+
+/* === ÍTEMS DE CALIDAD DE INFO ===
+   Cada ítem tiene un peso. El score de calidad de un terreno es:
+   (suma de pesos de ítems presentes) / (suma total de pesos posibles)
+   Modifica los pesos para ajustar qué tan importante es cada documento. */
+var INFO_ITEMS = [
+  { key:'infoFotos',        label:'Fotos',         peso:1 },
+  { key:'infoKmz',          label:'KMZ',           peso:1 },
+  { key:'infoPlano',        label:'Plano',         peso:2 },
+  { key:'infoCabida',       label:'Cabida',        peso:3 },
+  { key:'infoPresentacion', label:'Presentación',  peso:3 }
+];
+var INFO_PESO_TOTAL = INFO_ITEMS.reduce(function(a,x){return a+x.peso;},0);
+
+function g(t,k){ var v=t[COL[k]]; return (v===undefined||v===null)?'':v; }
+function gn(t,k){ return parseFloat(g(t,k))||0; }
+
+function normalizeResultado(raw){
+  if(!raw) return 'analizando';
+  var s=raw.toString().toLowerCase().trim();
+  if(s==='rechazado'||s==='descartado') return 'rechazado';
+  if(s==='positivo'||s==='aprobado') return 'positivo';
+  if(s==='analizando'||s==='en análisis'||s==='en analisis') return 'analizando';
+  return 'analizando';
+}
+
+var RESULT_COLOR={positivo:'#1D7A5F',analizando:'#B26A00',rechazado:'#C0392B'};
+
+var allTerrains=[], filtered=[], activeFilter='todos', selectedId=null, markers={}, map;
+var dateFrom=null, dateTo=null, activePreset=null;
+
+/* ============================================================
+   MAP INIT
+   ============================================================ */
+window.addEventListener('load', function(){
+  map = L.map('map',{zoomControl:true}).setView([-33.44,-70.63],12);
+
+  var baseLayers = {
+    'Mapa': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{
+      attribution:'Tiles © Esri', maxZoom:19
+    }),
+    'Satélite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+      attribution:'Tiles © Esri', maxZoom:19
+    }),
+    'Híbrido': L.layerGroup([
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19})
+    ])
+  };
+  baseLayers['Mapa'].addTo(map);
+  L.control.layers(baseLayers, null, {position:'topright', collapsed:true}).addTo(map);
+
+  loadData();
+});
+
+/* ============================================================
+   DATA LOADING
+   ============================================================ */
+function loadData(){
+  showLoading(true);
+  fetch(SHEET_API_URL)
+    .then(function(r){return r.json();})
+    .then(function(json){
+      if(json.terrenos&&Array.isArray(json.terrenos)){
+        allTerrains=json.terrenos.map(normalizeRow);
+        showLoading(false);
+        applyFilters();
+        fitBounds();
+      }
+    })
+    .catch(function(e){
+      console.error('Error:',e);
+      document.getElementById('count-text').textContent='Error al cargar';
+      showLoading(false);
+    });
+}
+
+function normalizeRow(r){
+  r._resultado=normalizeResultado(g(r,'resultado'));
+  r._resultadoOrig=g(r,'resultado')||'Analizando';
+  r._estadoOrig=g(r,'estado');
+  r._m2=gn(r,'m2'); r._uf=gn(r,'uf'); r._uf_m2=gn(r,'uf_m2');
+  if(!r._uf_m2&&r._m2>0&&r._uf>0) r._uf_m2=Math.round(r._uf/r._m2*10)/10;
+  r._lat=parseFloat(r.lat)||null; r._lng=parseFloat(r.lng)||null;
+  r._id=r[COL.id]||Math.random();
+  r._corredor=(g(r,'corredor')||'').toString().trim();
+
+  // Calidad de info: evaluar cada ítem
+  r._info={};
+  var pesoConseguido=0;
+  var tieneAlgunDato=false;
+  INFO_ITEMS.forEach(function(item){
+    var raw=g(r,item.key);
+    var presente=isTruthy(raw);
+    r._info[item.key]=presente;
+    if(raw!==''&&raw!==null&&raw!==undefined) tieneAlgunDato=true;
+    if(presente) pesoConseguido+=item.peso;
+  });
+  r._infoScore = INFO_PESO_TOTAL>0 ? pesoConseguido/INFO_PESO_TOTAL : 0;
+  r._infoScorePct = Math.round(r._infoScore*100);
+  r._infoTieneClasificacion = tieneAlgunDato; // si tiene al menos un campo llenado
+
+  var f=g(r,'fecha');
+  r._fecha=null;
+  if(f){try{var d=new Date(f);if(!isNaN(d))r._fecha=d;}catch(e){}}
+  return r;
+}
+
+// Interpreta un valor como "sí": SI, SÍ, YES, TRUE, 1, X, ✓ → true
+function isTruthy(v){
+  if(v===true) return true;
+  if(v===1) return true;
+  if(!v) return false;
+  var s=v.toString().trim().toLowerCase();
+  return s==='si'||s==='sí'||s==='yes'||s==='true'||s==='1'||s==='x'||s==='✓'||s==='ok';
+}
+
+function showLoading(s){
+  document.getElementById('loading-state').style.display=s?'flex':'none';
+  if(!s) document.getElementById('list-view').style.display='block';
+}
+
+function fitBounds(){
+  var pts=allTerrains.filter(function(t){return t._lat&&t._lng;}).map(function(t){return[t._lat,t._lng];});
+  if(pts.length>1)map.fitBounds(pts,{padding:[40,40]});
+  else if(pts.length===1)map.setView(pts[0],14);
+}
+
+/* ============================================================
+   FILTERS
+   ============================================================ */
+function setFilter(f,btn){
+  activeFilter=f;
+  document.querySelectorAll('#float-filters .chip').forEach(function(c){c.className='chip';});
+  btn.classList.add('active-'+f);
+  closeDetail();
+  applyFilters();
+  updateFiltersChipVisibility();
+}
+
+function onSearchInput(){
+  applyFilters();
+  updateFiltersChipVisibility();
+}
+
+function onDateChange(){
+  var f=document.getElementById('date-from').value;
+  var t=document.getElementById('date-to').value;
+  dateFrom = f ? new Date(f+'T00:00:00') : null;
+  dateTo   = t ? new Date(t+'T23:59:59') : null;
+  activePreset=null;
+  document.querySelectorAll('.date-preset').forEach(function(p){p.classList.remove('active');});
+  updateDateClearVisibility();
+  closeDetail();
+  applyFilters();
+}
+
+function setDatePreset(days,btn){
+  var today=new Date();
+  var from=new Date();
+  from.setDate(today.getDate()-days);
+  dateFrom=new Date(from.getFullYear(),from.getMonth(),from.getDate(),0,0,0);
+  dateTo=new Date(today.getFullYear(),today.getMonth(),today.getDate(),23,59,59);
+  document.getElementById('date-from').value=toISODate(dateFrom);
+  document.getElementById('date-to').value=toISODate(dateTo);
+  activePreset=days;
+  document.querySelectorAll('.date-preset').forEach(function(p){p.classList.remove('active');});
+  btn.classList.add('active');
+  updateDateClearVisibility();
+  closeDetail();
+  applyFilters();
+}
+
+function clearDateFilter(){
+  dateFrom=null; dateTo=null; activePreset=null;
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  document.querySelectorAll('.date-preset').forEach(function(p){p.classList.remove('active');});
+  updateDateClearVisibility();
+  closeDetail();
+  applyFilters();
+}
+
+function updateDateClearVisibility(){
+  var b=document.getElementById('date-clear');
+  if(dateFrom||dateTo) b.classList.add('visible'); else b.classList.remove('visible');
+}
+
+function toISODate(d){
+  var m=(d.getMonth()+1).toString().padStart(2,'0');
+  var day=d.getDate().toString().padStart(2,'0');
+  return d.getFullYear()+'-'+m+'-'+day;
+}
+
+function applyFilters(){
+  var searchEl=document.getElementById('float-search');
+  var q=searchEl?searchEl.value.toLowerCase():'';
+  filtered=allTerrains.filter(function(t){
+    var mf = activeFilter==='todos' || t._resultado===activeFilter;
+    var mq=!q||g(t,'direccion').toLowerCase().indexOf(q)>=0||
+      g(t,'comuna').toLowerCase().indexOf(q)>=0||
+      g(t,'comentario').toLowerCase().indexOf(q)>=0||
+      g(t,'resultado').toLowerCase().indexOf(q)>=0||
+      g(t,'estado').toLowerCase().indexOf(q)>=0;
+    var md = true;
+    if(dateFrom || dateTo){
+      if(!t._fecha){ md=false; }
+      else {
+        if(dateFrom && t._fecha < dateFrom) md=false;
+        if(dateTo && t._fecha > dateTo) md=false;
+      }
+    }
+    return mf && mq && md;
+  });
+  renderList();
+  renderMarkers();
+  updateDashboardBadge();
+  updateTabCount();
+  updateDateBtnState();
+  if(document.getElementById('dashboard').classList.contains('active')){
+    renderDashboard();
+  }
+}
+
+function updateTabCount(){
+  var el=document.getElementById('tab-count');
+  if(el) el.textContent=filtered.length;
+}
+
+function updateDateBtnState(){
+  var btn=document.getElementById('date-btn');
+  var label=document.getElementById('date-btn-label');
+  if(!btn||!label) return;
+  if(dateFrom||dateTo){
+    btn.classList.add('active');
+    if(activePreset){
+      label.textContent='Últimos '+activePreset+'d';
+    } else {
+      var f=dateFrom?dateFrom.toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'inicio';
+      var t=dateTo?dateTo.toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'hoy';
+      label.textContent=f+' → '+t;
+    }
+  } else {
+    btn.classList.remove('active');
+    label.textContent='Fechas';
+  }
+}
+
+function updateFiltersChipVisibility(){
+  // placeholder: por ahora nada, pero lo dejamos disponible para marcar filtros activos
+}
+
+/* ============================================================
+   LIST & MARKERS (igual que antes)
+   ============================================================ */
+// Estado de qué comunas están expandidas
+var expandedComunas = {};
+
+function renderList(){
+  var el=document.getElementById('list-view');
+  var n=filtered.length;
+  var total=allTerrains.length;
+  document.getElementById('count-text').innerHTML =
+    '<strong>'+n+'</strong> de '+total+' terreno'+(total!==1?'s':'');
+  if(!n){
+    el.innerHTML='<div style="padding:40px 20px;text-align:center;font-size:12px;font-family:var(--font-mono);color:var(--text-faint)">Sin resultados<br><span style="font-size:11px">prueba ajustando los filtros</span></div>';
+    return;
+  }
+
+  // Agrupar por comuna
+  var byComuna = {};
+  filtered.forEach(function(t){
+    var c = g(t,'comuna') || 'Sin comuna';
+    if(!byComuna[c]) byComuna[c]=[];
+    byComuna[c].push(t);
+  });
+
+  // Ordenar comunas por cantidad (más primero)
+  var comunas = Object.keys(byComuna).sort(function(a,b){
+    return byComuna[b].length - byComuna[a].length;
+  });
+
+  // Si hay una búsqueda activa, expandir todas las comunas automáticamente
+  var searchEl=document.getElementById('float-search');
+  var hasSearch = searchEl && searchEl.value.trim().length>0;
+
+  el.innerHTML = comunas.map(function(comuna){
+    var list = byComuna[comuna];
+    var isExpanded = hasSearch || expandedComunas[comuna];
+
+    // Mini dots con el estado de cada terreno
+    var dots = list.slice(0,8).map(function(t){
+      return '<span class="comuna-mini-dot" style="background:'+RESULT_COLOR[t._resultado]+'"></span>';
+    }).join('');
+    if(list.length>8) dots += '<span class="comuna-count" style="font-size:9px;padding:0 4px">+'+(list.length-8)+'</span>';
+
+    var terrainsHtml = list.map(function(t){
+      var ds='';
+      if(t._fecha)ds=t._fecha.toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'});
+      var m2=t._m2?t._m2.toLocaleString()+' m²':'';
+      var uf=t._uf?'UF '+t._uf.toLocaleString():'';
+      var um=t._uf_m2?t._uf_m2+' UF/m²':'';
+      var pillClass='pill-'+t._resultado;
+      return '<div class="t-item res-'+t._resultado+(t._id==selectedId?' selected':'')+'" onclick="selectTerrain('+t._id+')">'+
+        '<div class="t-address">'+g(t,'direccion')+'</div>'+
+        '<div class="t-row">'+
+          (m2?'<span class="t-stat">'+m2+'</span>':'')+
+          (m2&&uf?'<span class="dot-sep"></span>':'')+
+          (uf?'<span class="t-stat">'+uf+'</span>':'')+
+          (uf&&um?'<span class="dot-sep"></span>':'')+
+          (um?'<span class="t-stat">'+um+'</span>':'')+
+          '<span class="result-pill '+pillClass+'" style="margin-left:auto">'+t._resultadoOrig+'</span>'+
+        '</div>'+
+        (ds?'<div class="t-row"><span class="t-date">'+ds+'</span></div>':'')+
+      '</div>';
+    }).join('');
+
+    return '<div class="comuna-group">'+
+      '<div class="comuna-header'+(isExpanded?' expanded':'')+'" onclick="toggleComuna(\''+comuna.replace(/'/g,"\\'")+'\')">'+
+        '<div class="comuna-header-left">'+
+          '<span class="comuna-arrow">▶</span>'+
+          '<span class="comuna-name">'+comuna+'</span>'+
+        '</div>'+
+        '<div class="comuna-meta">'+
+          '<div class="comuna-mini-dots">'+dots+'</div>'+
+          '<span class="comuna-count">'+list.length+'</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="comuna-terrains'+(isExpanded?' expanded':'')+'">'+terrainsHtml+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function toggleComuna(comuna){
+  expandedComunas[comuna] = !expandedComunas[comuna];
+  renderList();
+}
+
+function makeIcon(t){
+  var col=RESULT_COLOR[t._resultado]||'#888';
+  var sel=t._id==selectedId;
+  var sz=sel?20:16;
+  var shadow = sel
+    ? '0 0 0 4px rgba(45,91,227,0.35), 0 2px 8px rgba(0,0,0,0.4)'
+    : '0 1px 4px rgba(0,0,0,0.4)';
+  return L.divIcon({
+    html:'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+col+';border:3px solid white;box-shadow:'+shadow+';cursor:pointer"></div>',
+    className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
+  });
+}
+
+function renderMarkers(){
+  Object.values(markers).forEach(function(m){map.removeLayer(m);});
+  markers={};
+  filtered.forEach(function(t){
+    if(!t._lat||!t._lng)return;
+    var m=L.marker([t._lat,t._lng],{icon:makeIcon(t)}).addTo(map);
+    m.on('click',function(){selectTerrain(t._id);});
+    markers[t._id]=m;
+  });
+}
+
+function updateMarkerIcons(){
+  allTerrains.forEach(function(t){
+    if(markers[t._id])markers[t._id].setIcon(makeIcon(t));
+  });
+}
+
+/* ============================================================
+   DETAIL VIEW (igual que antes)
+   ============================================================ */
+function selectTerrain(id){
+  selectedId=id;
+  var t=allTerrains.find(function(x){return x._id==id;});
+  if(!t)return;
+
+  // Si el sidebar está cerrado, abrirlo
+  if(!document.getElementById('sidebar').classList.contains('open')){
+    openSidebar();
+  }
+
+  // Expandir la comuna del terreno
+  var c = g(t,'comuna') || 'Sin comuna';
+  expandedComunas[c] = true;
+
+  document.getElementById('list-view').style.display='none';
+  document.getElementById('list-meta').style.display='none';
+  var dv=document.getElementById('detail-view');
+  dv.classList.add('active');
+
+  fillDetail(t);
+  updateMarkerIcons();
+
+  if(t._lat&&t._lng) map.panTo([t._lat,t._lng],{animate:true});
+}
+
+function fillDetail(t){
+  var ds='—';
+  if(t._fecha) ds=t._fecha.toLocaleDateString('es-CL',{year:'numeric',month:'long',day:'numeric'});
+
+  document.getElementById('detail-addr').textContent=g(t,'direccion');
+  document.getElementById('detail-com').textContent=g(t,'comuna');
+  var pill=document.getElementById('detail-status');
+  pill.textContent=t._resultadoOrig;
+  pill.className='result-pill pill-'+t._resultado;
+
+  var li=g(t,'linkInfo'), le=g(t,'linkEval');
+  var svg='<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#2D5BE3" stroke-width="1.5"><path d="M8 2h4v4M6 8l6-6M2 4h3M2 4v8h8v-3"/></svg>';
+  var lh='';
+  if(li||le){
+    lh='<div class="links-list">';
+    if(li) lh+='<a class="link-item" href="'+li+'" target="_blank" rel="noopener"><div class="link-icon">'+svg+'</div><span class="link-text">Información del corredor</span><span class="link-arrow">↗</span></a>';
+    if(le) lh+='<a class="link-item" href="'+le+'" target="_blank" rel="noopener"><div class="link-icon">'+svg+'</div><span class="link-text">Evaluación del terreno</span><span class="link-arrow">↗</span></a>';
+    lh+='</div>';
+  } else {
+    lh='<div class="no-data">Sin documentos adjuntos aún</div>';
+  }
+
+  var com=g(t,'comentario');
+  var ch=com?'<div class="comment-box">'+com+'</div>':'<div class="no-data">Sin comentarios</div>';
+  var estadoVal=g(t,'estado');
+  var estadoHtml = estadoVal
+    ? '<div class="estado-box">'+estadoVal+'</div>'
+    : '<div class="no-data">Sin estado registrado</div>';
+
+  var corredorRow = t._corredor
+    ? '<div class="info-row"><span class="info-key">Corredor</span><span class="info-val">'+t._corredor+'</span></div>'
+    : '';
+
+  // Sección de calidad de info
+  var infoQualityHtml;
+  if(t._infoTieneClasificacion){
+    var pct = t._infoScorePct;
+    var badgeClass = pct>=70?'pill-positivo':(pct>=40?'pill-analizando':'pill-rechazado');
+    var itemsHtml = INFO_ITEMS.map(function(item){
+      var ok = t._info[item.key];
+      var color = ok?'var(--green)':'var(--text-faint)';
+      var bg = ok?'var(--green-bg)':'var(--bg)';
+      var icon = ok?'✓':'○';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:'+bg+';border-radius:var(--radius);font-size:12px">'+
+        '<span style="color:'+color+';font-weight:500;font-size:14px;width:14px;display:inline-flex;justify-content:center">'+icon+'</span>'+
+        '<span style="color:'+(ok?'var(--text)':'var(--text-muted)')+'">'+item.label+'</span>'+
+        '<span style="margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-faint)">+'+item.peso+'</span>'+
+      '</div>';
+    }).join('');
+    infoQualityHtml =
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
+        '<span style="font-size:13px;color:var(--text-muted)">Score de completitud</span>'+
+        '<span class="result-pill '+badgeClass+'" style="font-size:11px">'+pct+'%</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+itemsHtml+'</div>';
+  } else {
+    infoQualityHtml = '<div class="no-data">Sin clasificación de info aún. Marca los campos Fotos, KMZ, Plano, Cabida, Presentacion en tu Sheet.</div>';
+  }
+
+  document.getElementById('detail-content').innerHTML=
+    '<div>'+
+      '<div class="section-label">Métricas</div>'+
+      '<div class="stats-grid stats-grid-3">'+
+        '<div class="stat-card accent"><div class="stat-label">Precio total</div><div class="stat-value">'+(t._uf?'UF '+t._uf.toLocaleString():'—')+'</div></div>'+
+        '<div class="stat-card"><div class="stat-label">UF / m²</div><div class="stat-value">'+(t._uf_m2||'—')+'</div></div>'+
+        '<div class="stat-card"><div class="stat-label">Superficie</div><div class="stat-value">'+(t._m2?t._m2.toLocaleString()+' <span class="stat-unit">m²</span>':'—')+'</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div>'+
+      '<div class="section-label">Estado</div>'+estadoHtml+
+    '</div>'+
+    '<div>'+
+      '<div class="section-label">Calidad de info</div>'+infoQualityHtml+
+    '</div>'+
+    '<div>'+
+      '<div class="section-label">Información</div>'+
+      '<div class="info-row"><span class="info-key">Dirección</span><span class="info-val">'+g(t,'direccion')+', '+g(t,'comuna')+'</span></div>'+
+      '<div class="info-row"><span class="info-key">Resultado</span><span class="info-val"><span class="result-pill pill-'+t._resultado+'">'+t._resultadoOrig+'</span></span></div>'+
+      corredorRow+
+      '<div class="info-row"><span class="info-key">Fecha ingreso</span><span class="info-val">'+ds+'</span></div>'+
+    '</div>'+
+    '<div>'+
+      '<div class="section-label">Análisis</div>'+ch+
+    '</div>'+
+    '<div>'+
+      '<div class="section-label">Documentos</div>'+lh+
+    '</div>'+
+    '<div style="height:20px"></div>';
+
+  document.getElementById('detail-view').scrollTop=0;
+}
+
+function closeDetail(){
+  selectedId=null;
+  document.getElementById('detail-view').classList.remove('active');
+  document.getElementById('list-view').style.display='block';
+  document.getElementById('list-meta').style.display='flex';
+  renderList();
+  updateMarkerIcons();
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function toggleDashboard(){
+  var dash = document.getElementById('dashboard');
+  if(dash.classList.contains('active')) closeDashboard();
+  else openDashboard();
+}
+
+function openDashboard(){
+  document.getElementById('dashboard').classList.add('active');
+  renderDashboard();
+  // Cambiar el botón a modo "cerrar"
+  var btn = document.getElementById('dashboard-toggle');
+  btn.classList.add('open');
+  document.getElementById('dt-icon-open').style.display = 'none';
+  document.getElementById('dt-icon-close').style.display = 'flex';
+  document.getElementById('dt-label').textContent = 'Cerrar';
+}
+
+function closeDashboard(){
+  document.getElementById('dashboard').classList.remove('active');
+  // Volver el botón al estado normal
+  var btn = document.getElementById('dashboard-toggle');
+  btn.classList.remove('open');
+  document.getElementById('dt-icon-open').style.display = 'flex';
+  document.getElementById('dt-icon-close').style.display = 'none';
+  document.getElementById('dt-label').textContent = 'Dashboard';
+}
+
+function updateDashboardBadge(){
+  document.getElementById('dt-count').textContent=filtered.length;
+}
+
+/* --- UTILIDADES DE CÁLCULO --- */
+function median(arr){
+  if(!arr.length) return 0;
+  var s=arr.slice().sort(function(a,b){return a-b;});
+  var m=Math.floor(s.length/2);
+  return s.length%2?s[m]:(s[m-1]+s[m])/2;
+}
+function mean(arr){ return arr.length?arr.reduce(function(a,b){return a+b;},0)/arr.length:0; }
+function round(n,d){ d=d||1; var p=Math.pow(10,d); return Math.round(n*p)/p; }
+function fmtNum(n){ return n?Math.round(n).toLocaleString('es-CL'):'0'; }
+function fmtUF(n){ return n?round(n,1).toLocaleString('es-CL'):'—'; }
+
+/* Agrupa por llave */
+function groupBy(arr,fn){
+  var o={};
+  arr.forEach(function(x){ var k=fn(x); if(!o[k])o[k]=[]; o[k].push(x); });
+  return o;
+}
+
+/* Filtra por rango de fechas arbitrario (sobre allTerrains) */
+function terrainsInRange(from,to){
+  return allTerrains.filter(function(t){
+    if(!t._fecha) return false;
+    if(from && t._fecha<from) return false;
+    if(to && t._fecha>to) return false;
+    return true;
+  });
+}
+
+/* --- RENDER PRINCIPAL --- */
+function renderDashboard(){
+  var data = filtered;
+
+  // Actualizar scope en header
+  var scopeParts=[];
+  scopeParts.push(data.length+' terreno'+(data.length!==1?'s':''));
+  if(dateFrom||dateTo){
+    var f=dateFrom?dateFrom.toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'inicio';
+    var t=dateTo?dateTo.toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'}):'hoy';
+    scopeParts.push(f+' → '+t);
+  } else {
+    scopeParts.push('histórico completo');
+  }
+  if(activeFilter!=='todos') scopeParts.push('filtro: '+activeFilter);
+  document.getElementById('dash-scope').textContent=scopeParts.join(' · ');
+
+  var body=document.getElementById('dash-body');
+
+  if(!data.length){
+    body.innerHTML='<div style="text-align:center;padding:80px 20px"><div style="font-family:var(--font-serif);font-size:20px;margin-bottom:8px">Sin datos para mostrar</div><div style="font-size:13px;color:var(--text-muted)">Ajusta los filtros o el rango de fechas</div></div>';
+    return;
+  }
+
+  body.innerHTML =
+    renderPipelineSection(data) +
+    renderProductivitySection() +
+    renderPricesSection(data) +
+    renderGeoSection(data) +
+    renderBrokersSection(data) +
+    renderEvolutionSection(data);
+
+  // Dibujar el gráfico de evolución si existe contenedor
+  setTimeout(function(){ drawEvolutionChart(data); }, 50);
+}
+
+/* --- 01. PIPELINE --- */
+function renderPipelineSection(data){
+  var total = data.length;
+  var analizando = data.filter(function(t){return t._resultado==='analizando';}).length;
+  var rechazado = data.filter(function(t){return t._resultado==='rechazado';}).length;
+  var positivo = data.filter(function(t){return t._resultado==='positivo';}).length;
+  var evaluados = analizando + rechazado + positivo;
+  var tasaRechazo = evaluados ? Math.round(rechazado/evaluados*100) : 0;
+
+  // Últimos 30 días (sobre allTerrains, no sobre data filtrada)
+  var hoy=new Date();
+  var hace30=new Date(hoy.getTime()-30*24*3600*1000);
+  var u30 = terrainsInRange(hace30,hoy).length;
+
+  return '<div class="dash-section">'+
+    '<div class="dash-section-head"><span class="dash-sec-num">01</span><span class="dash-sec-title">Pipeline</span></div>'+
+    '<div class="dash-sec-sub">Estado actual de tu portafolio de análisis</div>'+
+    '<div class="kpi-grid">'+
+      kpiCard('Terrenos totales', total, '', 'En el filtro actual', '') +
+      kpiCard('En análisis', analizando, '', 'Pipeline activo', 'amber') +
+      kpiCard('Tasa de rechazo', tasaRechazo, '%', rechazado+' de '+evaluados+' evaluados', 'red') +
+      kpiCard('Últimos 30 días', u30, '', 'Sobre histórico completo', 'accent') +
+    '</div>'+
+  '</div>';
+}
+
+/* --- 02. PRODUCTIVIDAD --- */
+function renderProductivitySection(){
+  var hoy = new Date();
+  var inicioSemana = new Date(hoy); inicioSemana.setDate(hoy.getDate()-7);
+  var inicioMes = new Date(hoy); inicioMes.setDate(hoy.getDate()-30);
+  var hace4Semanas = new Date(hoy); hace4Semanas.setDate(hoy.getDate()-28);
+
+  // Período actual
+  var estaSemana = terrainsInRange(inicioSemana,hoy).length;
+  var esteMes = terrainsInRange(inicioMes,hoy).length;
+
+  // Promedio semanal últimas 4 semanas
+  var ultimas4 = terrainsInRange(hace4Semanas,hoy).length;
+  var promSemanal = round(ultimas4/4,1);
+
+  // Período anterior para comparar (30-60 días atrás)
+  var hace60 = new Date(hoy); hace60.setDate(hoy.getDate()-60);
+  var mesAnterior = terrainsInRange(hace60,inicioMes).length;
+  var delta = mesAnterior===0 ? null : Math.round((esteMes-mesAnterior)/mesAnterior*100);
+
+  var deltaHtml='';
+  if(delta===null){
+    deltaHtml='<div class="kpi-delta flat">sin base de comparación</div>';
+  } else if(delta>0){
+    deltaHtml='<div class="kpi-delta up">↑ '+delta+'% vs mes anterior</div>';
+  } else if(delta<0){
+    deltaHtml='<div class="kpi-delta down">↓ '+Math.abs(delta)+'% vs mes anterior</div>';
+  } else {
+    deltaHtml='<div class="kpi-delta flat">= vs mes anterior</div>';
+  }
+
+  return '<div class="dash-section">'+
+    '<div class="dash-section-head"><span class="dash-sec-num">02</span><span class="dash-sec-title">Tu productividad</span></div>'+
+    '<div class="dash-sec-sub">Ritmo de análisis. Independiente del filtro de fechas actual.</div>'+
+    '<div class="kpi-grid">'+
+      kpiCard('Esta semana', estaSemana, '', 'Últimos 7 días', '') +
+      kpiCard('Este mes', esteMes, '', 'Últimos 30 días', '', deltaHtml) +
+      kpiCard('Promedio semanal', promSemanal, '', 'Últimas 4 semanas', '') +
+      kpiCard('Mes anterior', mesAnterior, '', '30 a 60 días atrás', '') +
+    '</div>'+
+  '</div>';
+}
+
+/* --- 03. PRECIOS --- */
+function renderPricesSection(data){
+  var ufm2 = data.map(function(t){return t._uf_m2;}).filter(function(x){return x>0;});
+  var m2s = data.map(function(t){return t._m2;}).filter(function(x){return x>0;});
+
+  var prom = ufm2.length ? round(mean(ufm2),1) : 0;
+  var med = ufm2.length ? round(median(ufm2),1) : 0;
+  var min = ufm2.length ? round(Math.min.apply(null,ufm2),1) : 0;
+  var max = ufm2.length ? round(Math.max.apply(null,ufm2),1) : 0;
+  var m2prom = m2s.length ? Math.round(mean(m2s)) : 0;
+
+  return '<div class="dash-section">'+
+    '<div class="dash-section-head"><span class="dash-sec-num">03</span><span class="dash-sec-title">Precios del mercado</span></div>'+
+    '<div class="dash-sec-sub">Cómo se mueven los números en tu universo de análisis</div>'+
+    '<div class="kpi-grid">'+
+      kpiCard('UF/m² promedio', prom || '—', '', 'Media aritmética', 'accent') +
+      kpiCard('UF/m² mediana', med || '—', '', 'Menos sensible a outliers', '') +
+      kpiCard('Rango UF/m²', (min||'—')+' – '+(max||'—'), '', 'Mínimo / máximo', '') +
+      kpiCard('Superficie promedio', fmtNum(m2prom), ' m²', 'Tamaño típico ofertado', '') +
+    '</div>'+
+  '</div>';
+}
+
+/* --- 04. GEO (comunas + donut) --- */
+function renderGeoSection(data){
+  // Top comunas por volumen
+  var byComuna = groupBy(data,function(t){return g(t,'comuna')||'Sin comuna';});
+  var comunas = Object.keys(byComuna).map(function(k){
+    var list=byComuna[k];
+    var precios=list.map(function(t){return t._uf_m2;}).filter(function(x){return x>0;});
+    return {
+      nombre:k, count:list.length,
+      precioProm: precios.length?round(mean(precios),1):0
+    };
+  });
+  var topVol = comunas.slice().sort(function(a,b){return b.count-a.count;}).slice(0,8);
+  var maxVol = topVol.length ? topVol[0].count : 1;
+
+  var topPrecio = comunas.filter(function(c){return c.precioProm>0;})
+    .sort(function(a,b){return a.precioProm-b.precioProm;}).slice(0,8);
+  var maxPrecio = topPrecio.length ? Math.max.apply(null,topPrecio.map(function(c){return c.precioProm;})) : 1;
+
+  var volBars = topVol.map(function(c){
+    var pct = Math.round(c.count/maxVol*100);
+    return '<div class="bar-row"><div class="bar-label" title="'+c.nombre+'">'+c.nombre+'</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>'+
+      '<div class="bar-value">'+c.count+'</div></div>';
+  }).join('');
+
+  var precioBars = topPrecio.map(function(c){
+    var pct = Math.round(c.precioProm/maxPrecio*100);
+    return '<div class="bar-row"><div class="bar-label" title="'+c.nombre+'">'+c.nombre+'</div>'+
+      '<div class="bar-track"><div class="bar-fill green" style="width:'+pct+'%"></div></div>'+
+      '<div class="bar-value">'+c.precioProm+'</div></div>';
+  }).join('');
+
+  // Donut por resultado
+  var byRes = {analizando:0,rechazado:0,positivo:0};
+  data.forEach(function(t){ byRes[t._resultado] = (byRes[t._resultado]||0)+1; });
+  var donutHtml = renderDonut(byRes, data.length);
+
+  return '<div class="dash-section">'+
+    '<div class="dash-section-head"><span class="dash-sec-num">04</span><span class="dash-sec-title">Distribución geográfica</span></div>'+
+    '<div class="dash-sec-sub">Dónde está la oferta y cómo están los precios por zona</div>'+
+    '<div class="dash-two-col">'+
+      '<div class="dash-card">'+
+        '<div class="dash-card-title">Top comunas por volumen</div>'+
+        '<div class="dash-card-sub">Cantidad de terrenos</div>'+
+        '<div class="bar-list">'+(volBars||'<div class="no-data">Sin datos</div>')+'</div>'+
+      '</div>'+
+      '<div class="dash-card">'+
+        '<div class="dash-card-title">UF/m² promedio por comuna</div>'+
+        '<div class="dash-card-sub">Ordenado de más barato a más caro</div>'+
+        '<div class="bar-list">'+(precioBars||'<div class="no-data">Sin datos</div>')+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="height:12px"></div>'+
+    '<div class="dash-card">'+
+      '<div class="dash-card-title">Distribución por resultado</div>'+
+      '<div class="dash-card-sub">Proporción del filtro actual</div>'+
+      donutHtml+
+    '</div>'+
+  '</div>';
+}
+
+/* Donut SVG simple */
+function renderDonut(counts, total){
+  if(!total) return '<div class="no-data">Sin datos</div>';
+  var segments=[
+    {key:'analizando', label:'Analizando', color:RESULT_COLOR.analizando, val:counts.analizando||0},
+    {key:'rechazado', label:'Rechazado', color:RESULT_COLOR.rechazado, val:counts.rechazado||0},
+    {key:'positivo', label:'Positivo', color:RESULT_COLOR.positivo, val:counts.positivo||0}
+  ].filter(function(s){return s.val>0;});
+
+  var r=50, cx=60, cy=60, circ=2*Math.PI*r;
+  var offset=0;
+  var circles = segments.map(function(s){
+    var pct = s.val/total;
+    var len = pct*circ;
+    var c = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+s.color+'" stroke-width="18" '+
+      'stroke-dasharray="'+len+' '+(circ-len)+'" stroke-dashoffset="'+(-offset)+'" transform="rotate(-90 '+cx+' '+cy+')"/>';
+    offset += len;
+    return c;
+  }).join('');
+
+  var legend = segments.map(function(s){
+    var pct = Math.round(s.val/total*100);
+    return '<div class="donut-row">'+
+      '<div class="donut-row-left"><span class="donut-dot" style="background:'+s.color+'"></span><span class="donut-name">'+s.label+'</span></div>'+
+      '<span class="donut-val">'+s.val+' · '+pct+'%</span>'+
+    '</div>';
+  }).join('');
+
+  return '<div class="donut-wrap">'+
+    '<svg class="donut-svg" width="120" height="120" viewBox="0 0 120 120">'+
+      '<circle cx="60" cy="60" r="50" fill="none" stroke="#F0EBE4" stroke-width="18"/>'+
+      circles+
+      '<text x="60" y="58" text-anchor="middle" font-family="Fraunces,serif" font-size="22" font-weight="500" fill="#1A1814">'+total+'</text>'+
+      '<text x="60" y="74" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="#7A7468">TOTAL</text>'+
+    '</svg>'+
+    '<div class="donut-legend">'+legend+'</div>'+
+  '</div>';
+}
+
+/* --- 05. RANKING DE CORREDORES --- */
+function renderBrokersSection(data){
+  // Solo terrenos con corredor definido
+  var withBroker = data.filter(function(t){return t._corredor;});
+
+  if(!withBroker.length){
+    return '<div class="dash-section">'+
+      '<div class="dash-section-head"><span class="dash-sec-num">05</span><span class="dash-sec-title">Ranking de corredores</span></div>'+
+      '<div class="dash-sec-sub">Quién te entrega la mejor información</div>'+
+      '<div class="dash-card">'+
+        '<div class="corr-empty">'+
+          '<div class="corr-empty-title">Agrega una columna <span class="corr-empty-code">Corredor</span> en tu Sheet</div>'+
+          '<div class="corr-empty-text">Una vez que empieces a registrar el corredor en cada terreno, acá aparecerá el ranking automáticamente. El score combina <strong>'+Math.round(BROKER_WEIGHTS.volumen*100)+'% volumen</strong> + <strong>'+Math.round(BROKER_WEIGHTS.hitRate*100)+'% hit rate</strong> + <strong>'+Math.round(BROKER_WEIGHTS.calidad*100)+'% calidad de info</strong>.</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // Agrupar por corredor
+  var byBroker = groupBy(withBroker,function(t){return t._corredor;});
+  var brokers = Object.keys(byBroker).map(function(name){
+    var list=byBroker[name];
+    var analizando = list.filter(function(t){return t._resultado==='analizando'||t._resultado==='positivo';}).length;
+    // Calidad promedio: solo considera terrenos que tienen al menos un check marcado.
+    // Los no clasificados se ignoran para no penalizar al corredor por tus datos viejos.
+    var clasificados = list.filter(function(t){return t._infoTieneClasificacion;});
+    var calidadProm = clasificados.length
+      ? mean(clasificados.map(function(t){return t._infoScore;}))
+      : null; // null = sin datos suficientes
+    return {
+      nombre: name,
+      volumen: list.length,
+      hitRate: list.length ? analizando/list.length : 0,
+      calidadProm: calidadProm,
+      clasificados: clasificados.length
+    };
+  });
+
+  // Normalización del volumen
+  var maxVol = Math.max.apply(null, brokers.map(function(b){return b.volumen;}));
+  // Para calidad: si nadie tiene clasificación, el componente vale 0 para todos
+  var hayCalidadData = brokers.some(function(b){return b.calidadProm!==null;});
+
+  brokers.forEach(function(b){
+    var nVol = maxVol ? b.volumen/maxVol : 0;
+    var nHit = b.hitRate; // ya es 0-1
+    // Calidad: si no tiene datos clasificados, usa 0.5 como valor neutro.
+    // Así no penaliza pero tampoco premia. Aparecerá un ícono de advertencia.
+    var nCalidad = b.calidadProm!==null ? b.calidadProm : 0.5;
+
+    b.score = Math.round(100*(
+      BROKER_WEIGHTS.volumen*nVol +
+      BROKER_WEIGHTS.hitRate*nHit +
+      BROKER_WEIGHTS.calidad*nCalidad
+    ));
+  });
+
+  brokers.sort(function(a,b){return b.score-a.score;});
+
+  var rows = brokers.map(function(b,i){
+    var rankClass = i<3 ? 'corr-rank top' : 'corr-rank';
+    var scoreClass = b.score>=70?'score-hi':(b.score>=40?'score-mid':'score-lo');
+    var calidadCell;
+    if(b.calidadProm===null){
+      calidadCell = '<span class="info-warn" title="Sin terrenos con info clasificada">— <span style="font-size:10px">sin datos</span></span>';
+    } else {
+      var pct = Math.round(b.calidadProm*100);
+      var dots = renderQualityDots(b.calidadProm);
+      calidadCell = dots+' <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-left:4px">'+pct+'%</span>'+
+        '<div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);margin-top:2px">'+b.clasificados+'/'+b.volumen+' clasif.</div>';
+    }
+    return '<tr>'+
+      '<td><span class="'+rankClass+'">'+(i+1)+'</span><span class="corr-name">'+b.nombre+'</span></td>'+
+      '<td class="num">'+b.volumen+'</td>'+
+      '<td class="num">'+Math.round(b.hitRate*100)+'%</td>'+
+      '<td>'+calidadCell+'</td>'+
+      '<td class="num"><span class="score-pill '+scoreClass+'">'+b.score+'</span></td>'+
+    '</tr>';
+  }).join('');
+
+  var infoNote = !hayCalidadData
+    ? '<div style="background:var(--amber-bg);color:var(--amber);padding:10px 14px;border-radius:var(--radius);font-size:12px;margin-bottom:14px;border-left:3px solid var(--amber)">Aún no has clasificado la calidad de info en ninguno de tus terrenos. El score de calidad está en 50% neutro para todos. Empieza marcando los campos <strong>Fotos, KMZ, Plano, Cabida, Presentacion</strong> en tu Sheet.</div>'
+    : '';
+
+  return '<div class="dash-section">'+
+    '<div class="dash-section-head"><span class="dash-sec-num">05</span><span class="dash-sec-title">Ranking de corredores</span></div>'+
+    '<div class="dash-sec-sub">Score combina '+Math.round(BROKER_WEIGHTS.volumen*100)+'% volumen + '+Math.round(BROKER_WEIGHTS.hitRate*100)+'% hit rate + '+Math.round(BROKER_WEIGHTS.calidad*100)+'% calidad de info</div>'+
+    infoNote+
+    '<div class="dash-card" style="padding:16px 20px">'+
+      '<table class="corr-table">'+
+        '<thead><tr>'+
+          '<th>Corredor</th>'+
+          '<th class="num">Volumen</th>'+
+          '<th class="num">Hit rate</th>'+
+          '<th>Calidad de info</th>'+
+          '<th class="num">Score</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table>'+
+    '</div>'+
+  '</div>';
+}
+
+// Dibuja puntos llenos/vacíos representando el score de calidad (0-1)
+function renderQualityDots(score){
+  var filled = Math.round(score*5);
+  var dots='';
+  for(var i=0;i<5;i++){
+    var color = i<filled ? 'var(--accent)' : 'var(--border)';
+    dots+='<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+color+';margin-right:2px"></span>';
+  }
+  return '<span style="white-space:nowrap">'+dots+'</span>';
+}
+
+/* --- 06. EVOLUCIÓN TEMPORAL --- */
+function renderEvolutionSection(data){
+  return '<div class="dash-section">'+
+    '<div class="dash-section-head"><span class="dash-sec-num">06</span><span class="dash-sec-title">Evolución temporal</span></div>'+
+    '<div class="dash-sec-sub">Volumen mensual apilado por resultado + UF/m² promedio</div>'+
+    '<div class="dash-card">'+
+      '<canvas id="evo-canvas" class="evo-chart"></canvas>'+
+      '<div class="evo-legend">'+
+        '<span><i style="background:'+RESULT_COLOR.analizando+'"></i>Analizando</span>'+
+        '<span><i style="background:'+RESULT_COLOR.rechazado+'"></i>Rechazado</span>'+
+        '<span><i style="background:'+RESULT_COLOR.positivo+'"></i>Positivo</span>'+
+        '<span><i style="background:'+'#2D5BE3'+';border-radius:50%;width:8px;height:8px"></i>UF/m² prom</span>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function drawEvolutionChart(data){
+  var canvas = document.getElementById('evo-canvas');
+  if(!canvas) return;
+
+  // Agrupar por mes (YYYY-MM)
+  var withDate = data.filter(function(t){return t._fecha;});
+  if(!withDate.length){
+    var ctx0=canvas.getContext('2d');
+    canvas.width=canvas.offsetWidth*2; canvas.height=canvas.offsetHeight*2;
+    ctx0.scale(2,2);
+    ctx0.fillStyle='#ADA89F'; ctx0.font='12px "DM Mono"'; ctx0.textAlign='center';
+    ctx0.fillText('Sin datos con fecha para mostrar', canvas.offsetWidth/2, canvas.offsetHeight/2);
+    return;
+  }
+
+  var byMonth = {};
+  withDate.forEach(function(t){
+    var k = t._fecha.getFullYear()+'-'+(t._fecha.getMonth()+1).toString().padStart(2,'0');
+    if(!byMonth[k]) byMonth[k]={analizando:0,rechazado:0,positivo:0,precios:[]};
+    byMonth[k][t._resultado]++;
+    if(t._uf_m2>0) byMonth[k].precios.push(t._uf_m2);
+  });
+
+  var months = Object.keys(byMonth).sort();
+  var series = months.map(function(m){
+    var d=byMonth[m];
+    return {
+      mes:m,
+      analizando:d.analizando,
+      rechazado:d.rechazado,
+      positivo:d.positivo,
+      total:d.analizando+d.rechazado+d.positivo,
+      precioProm: d.precios.length?mean(d.precios):null
+    };
+  });
+
+  // Setup canvas HiDPI
+  var w = canvas.offsetWidth;
+  var h = canvas.offsetHeight;
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  var pad = {l:40,r:50,t:20,b:36};
+  var chartW = w - pad.l - pad.r;
+  var chartH = h - pad.t - pad.b;
+  var n = series.length;
+  var barSlot = chartW / Math.max(n,1);
+  var barW = Math.min(barSlot*0.6, 40);
+
+  var maxTotal = Math.max.apply(null, series.map(function(s){return s.total;})) || 1;
+  var preciosValidos = series.map(function(s){return s.precioProm;}).filter(function(x){return x!==null;});
+  var minPrecio = preciosValidos.length ? Math.min.apply(null,preciosValidos) : 0;
+  var maxPrecio = preciosValidos.length ? Math.max.apply(null,preciosValidos) : 1;
+
+  // Ejes
+  ctx.strokeStyle='#E2DDD6'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t);
+  ctx.lineTo(pad.l, pad.t+chartH);
+  ctx.lineTo(pad.l+chartW, pad.t+chartH);
+  ctx.stroke();
+
+  // Gridlines horizontales
+  ctx.fillStyle='#ADA89F'; ctx.font='10px "DM Mono"'; ctx.textAlign='right';
+  for(var i=0;i<=4;i++){
+    var y = pad.t + chartH - (i/4)*chartH;
+    var val = Math.round((i/4)*maxTotal);
+    ctx.fillText(val, pad.l-6, y+3);
+    if(i>0){
+      ctx.strokeStyle='#F0EBE4';
+      ctx.beginPath();
+      ctx.moveTo(pad.l, y); ctx.lineTo(pad.l+chartW, y);
+      ctx.stroke();
+    }
+  }
+
+  // Barras apiladas
+  series.forEach(function(s,i){
+    var x = pad.l + barSlot*i + (barSlot-barW)/2;
+    var yBase = pad.t+chartH;
+    var order = ['rechazado','analizando','positivo'];
+    order.forEach(function(k){
+      var v = s[k]; if(!v) return;
+      var hBar = (v/maxTotal)*chartH;
+      ctx.fillStyle = RESULT_COLOR[k];
+      ctx.fillRect(x, yBase-hBar, barW, hBar);
+      yBase -= hBar;
+    });
+
+    // Label mes
+    ctx.fillStyle='#7A7468'; ctx.font='10px "DM Mono"'; ctx.textAlign='center';
+    var parts = s.mes.split('-');
+    var mesNombre = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(parts[1])-1];
+    ctx.fillText(mesNombre+' '+parts[0].slice(2), x+barW/2, pad.t+chartH+16);
+  });
+
+  // Línea UF/m² promedio (eje secundario)
+  if(preciosValidos.length>1 && maxPrecio>minPrecio){
+    ctx.strokeStyle='#2D5BE3'; ctx.lineWidth=2;
+    ctx.beginPath();
+    var firstPoint=true;
+    series.forEach(function(s,i){
+      if(s.precioProm===null) return;
+      var x = pad.l + barSlot*i + barSlot/2;
+      var y = pad.t + chartH - ((s.precioProm-minPrecio)/(maxPrecio-minPrecio))*chartH;
+      if(firstPoint){ ctx.moveTo(x,y); firstPoint=false; }
+      else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Puntos
+    ctx.fillStyle='#2D5BE3';
+    series.forEach(function(s,i){
+      if(s.precioProm===null) return;
+      var x = pad.l + barSlot*i + barSlot/2;
+      var y = pad.t + chartH - ((s.precioProm-minPrecio)/(maxPrecio-minPrecio))*chartH;
+      ctx.beginPath();
+      ctx.arc(x,y,3,0,Math.PI*2);
+      ctx.fill();
+    });
+
+    // Eje secundario derecho (UF/m²)
+    ctx.fillStyle='#2D5BE3'; ctx.font='10px "DM Mono"'; ctx.textAlign='left';
+    ctx.fillText(round(maxPrecio,1), pad.l+chartW+6, pad.t+6);
+    ctx.fillText(round(minPrecio,1), pad.l+chartW+6, pad.t+chartH);
+  }
+}
+
+/* ============================================================
+   HELPER: KPI CARD
+   ============================================================ */
+function kpiCard(label, value, unit, note, color, extraHtml){
+  var cls = color ? 'kpi-card kpi-'+color : 'kpi-card';
+  return '<div class="'+cls+'">'+
+    '<div class="kpi-label">'+label+'</div>'+
+    '<div class="kpi-value">'+value+(unit?'<span class="kpi-unit">'+unit+'</span>':'')+'</div>'+
+    (extraHtml?extraHtml:'')+
+    (note?'<div class="kpi-note">'+note+'</div>':'')+
+  '</div>';
+}
+
+/* ============================================================
+   PANEL DESLIZABLE: lengueta, abrir, cerrar, pinear
+   ============================================================ */
+var sidebarPinned = false;
+
+function openSidebar(){
+  var sb = document.getElementById('sidebar');
+  var tab = document.getElementById('panel-tab');
+  sb.classList.add('open');
+  tab.classList.add('hidden');
+  shiftMapControls(true);
+}
+
+function closeSidebar(){
+  // Si está pineado, despinear primero
+  if(sidebarPinned){
+    sidebarPinned = false;
+    document.getElementById('sidebar').classList.remove('pinned');
+    document.getElementById('pin-btn').classList.remove('active');
+  }
+  var sb = document.getElementById('sidebar');
+  var tab = document.getElementById('panel-tab');
+  sb.classList.remove('open');
+  tab.classList.remove('hidden');
+  shiftMapControls(false);
+  // Forzar recálculo del mapa
+  setTimeout(function(){ if(map) map.invalidateSize(); }, 320);
+}
+
+function togglePin(){
+  sidebarPinned = !sidebarPinned;
+  var sb = document.getElementById('sidebar');
+  var pinBtn = document.getElementById('pin-btn');
+  if(sidebarPinned){
+    sb.classList.add('pinned');
+    pinBtn.classList.add('active');
+  } else {
+    sb.classList.remove('pinned');
+    pinBtn.classList.remove('active');
+  }
+  // Forzar recálculo del mapa por si cambió el área visible
+  setTimeout(function(){ if(map) map.invalidateSize(); }, 100);
+}
+
+function shiftMapControls(open){
+  var mc = document.getElementById('map-controls');
+  if(!mc) return;
+  if(open) mc.classList.add('shifted');
+  else mc.classList.remove('shifted');
+}
+
+/* ============================================================
+   POPOVER DE FECHAS
+   ============================================================ */
+function toggleDatePopover(){
+  var pop = document.getElementById('date-popover');
+  pop.classList.toggle('open');
+}
+
+// Cerrar popover si clickea afuera
+document.addEventListener('click', function(e){
+  var pop = document.getElementById('date-popover');
+  var btn = document.getElementById('date-btn');
+  if(!pop || !btn) return;
+  if(pop.classList.contains('open') && !pop.contains(e.target) && !btn.contains(e.target)){
+    pop.classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>
