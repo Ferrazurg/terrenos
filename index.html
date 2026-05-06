@@ -824,9 +824,9 @@ function renderList(){
     byComuna[c].push(t);
   });
 
-  // Ordenar comunas por cantidad (más primero)
+  // Ordenar comunas alfabéticamente (con soporte de tildes y ñ)
   var comunas = Object.keys(byComuna).sort(function(a,b){
-    return byComuna[b].length - byComuna[a].length;
+    return a.localeCompare(b, 'es');
   });
 
   // Si hay una búsqueda activa, expandir todas las comunas automáticamente
