@@ -308,6 +308,42 @@
   #dashboard::-webkit-scrollbar { width: 6px; }
   #dashboard::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+  /* Cuando el dashboard está abierto, ocultar controles del mapa */
+  body.dashboard-open .leaflet-control-zoom,
+  body.dashboard-open .leaflet-control-layers,
+  body.dashboard-open .leaflet-control-attribution,
+  body.dashboard-open #panel-tab,
+  body.dashboard-open #poi-controls {
+    display: none !important;
+  }
+  /* Subir z-index de los controles flotantes para que queden sobre el dashboard */
+  body.dashboard-open #map-controls { z-index: 500; }
+
+  /* PANEL FLOTANTE DE CAPAS POI */
+  #poi-controls {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    z-index: 500; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    display: none; gap: 4px; align-items: center;
+  }
+  #poi-controls .poi-label {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-faint);
+    letter-spacing: 0.08em; text-transform: uppercase; padding: 0 8px;
+  }
+  .poi-btn {
+    background: transparent; border: none; padding: 6px 10px; border-radius: var(--radius);
+    cursor: pointer; display: flex; align-items: center; gap: 5px;
+    font-family: var(--font-sans); font-size: 12px; color: var(--text-muted);
+    transition: all 0.12s;
+  }
+  .poi-btn:hover { background: var(--bg); color: var(--text); }
+  .poi-btn.active { color: var(--surface); }
+  .poi-btn .poi-btn-icon { font-size: 13px; }
+  .poi-btn[data-cat="educacion"].active { background: #6B4FBB; }
+  .poi-btn[data-cat="comercio"].active { background: #B26A00; }
+  .poi-btn[data-cat="areas_verdes"].active { background: #1D7A5F; }
+  .poi-btn[data-cat="transporte"].active { background: #2D5BE3; }
+
   #dash-header {
     position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border);
     padding: 16px 160px 16px 28px; display: flex; align-items: center; justify-content: space-between;
@@ -463,6 +499,23 @@
       <span class="dt-badge" id="dt-count">0</span>
     </button>
 
+    <!-- PANEL FLOTANTE DE CAPAS POI (visible solo cuando hay terreno seleccionado) -->
+    <div id="poi-controls">
+      <span class="poi-label">Equipamiento</span>
+      <button class="poi-btn" id="poi-btn-educacion" data-cat="educacion" onclick="togglePOICategory('educacion')">
+        <span class="poi-btn-icon">🎓</span><span>Educación</span>
+      </button>
+      <button class="poi-btn" id="poi-btn-comercio" data-cat="comercio" onclick="togglePOICategory('comercio')">
+        <span class="poi-btn-icon">🛒</span><span>Comercio</span>
+      </button>
+      <button class="poi-btn" id="poi-btn-areas_verdes" data-cat="areas_verdes" onclick="togglePOICategory('areas_verdes')">
+        <span class="poi-btn-icon">🌳</span><span>Áreas verdes</span>
+      </button>
+      <button class="poi-btn" id="poi-btn-transporte" data-cat="transporte" onclick="togglePOICategory('transporte')">
+        <span class="poi-btn-icon">🚇</span><span>Transporte</span>
+      </button>
+    </div>
+
     <!-- PANEL DASHBOARD -->
     <div id="dashboard">
       <div id="dash-header">
@@ -560,6 +613,79 @@ var INFO_ITEMS = [
   { key:'infoPresentacion', label:'Presentación',  peso:3 }
 ];
 var INFO_PESO_TOTAL = INFO_ITEMS.reduce(function(a,x){return a+x.peso;},0);
+
+/* === EQUIPAMIENTO DEL ENTORNO ===
+   Categorías de POIs (puntos de interés) que la app busca alrededor de cada terreno.
+   Usa la API de Overpass (OpenStreetMap), gratis y sin API key.
+   Modifica POI_RADIUS para cambiar el radio de búsqueda en metros. */
+var POI_RADIUS = 800; // metros
+
+var POI_CATEGORIES = [
+  {
+    key: 'educacion',
+    label: 'Educación',
+    icon: '🎓',
+    color: '#6B4FBB',
+    bgColor: '#EEE9FB',
+    // Tags de OpenStreetMap a buscar
+    queries: [
+      'node["amenity"="school"]',
+      'way["amenity"="school"]',
+      'node["amenity"="university"]',
+      'way["amenity"="university"]',
+      'node["amenity"="kindergarten"]',
+      'way["amenity"="kindergarten"]'
+    ]
+  },
+  {
+    key: 'comercio',
+    label: 'Comercio',
+    icon: '🛒',
+    color: '#B26A00',
+    bgColor: '#FDF0D5',
+    queries: [
+      'node["shop"="supermarket"]',
+      'way["shop"="supermarket"]',
+      'node["amenity"="pharmacy"]',
+      'node["shop"="mall"]',
+      'way["shop"="mall"]',
+      'node["amenity"="marketplace"]'
+    ]
+  },
+  {
+    key: 'areas_verdes',
+    label: 'Áreas verdes',
+    icon: '🌳',
+    color: '#1D7A5F',
+    bgColor: '#E3F2EC',
+    queries: [
+      'way["leisure"="park"]',
+      'node["leisure"="park"]',
+      'way["leisure"="garden"]',
+      'way["landuse"="recreation_ground"]'
+    ]
+  },
+  {
+    key: 'transporte',
+    label: 'Transporte',
+    icon: '🚇',
+    color: '#2D5BE3',
+    bgColor: '#EAF0FE',
+    queries: [
+      'node["railway"="station"]',
+      'node["station"="subway"]',
+      'node["railway"="subway_entrance"]',
+      'node["highway"="bus_stop"]'
+    ]
+  }
+];
+
+// Cache de POIs por terreno (evita re-consultar Overpass cada vez)
+var poiCache = {};
+// Capa activa de POIs en el mapa
+var poiLayer = null;
+// Categorías visibles en el mapa (toggle)
+var poiVisible = { educacion:false, comercio:false, areas_verdes:false, transporte:false };
 
 function g(t,k){ var v=t[COL[k]]; return (v===undefined||v===null)?'':v; }
 function gn(t,k){ return parseFloat(g(t,k))||0; }
@@ -939,6 +1065,7 @@ function selectTerrain(id){
 
   fillDetail(t);
   updateMarkerIcons();
+  updatePOIControls();
 
   if(t._lat&&t._lng) map.panTo([t._lat,t._lng],{animate:true});
 }
@@ -1202,11 +1329,20 @@ function fillDetail(t){
       '<div class="section-label">Análisis</div>'+ch+
     '</div>'+
     '<div>'+
+      '<div class="section-label">Equipamiento del entorno</div>'+
+      buildPOISectionHtml(t)+
+    '</div>'+
+    '<div>'+
       '<div class="section-label">Documentos</div>'+lh+
     '</div>'+
     '<div style="height:20px"></div>';
 
   document.getElementById('detail-view').scrollTop=0;
+
+  // Cargar POIs en background (Overpass)
+  fetchPOIs(t, function(byCat, err){
+    renderPOIs(byCat, err);
+  });
 }
 
 function closeDetail(){
@@ -1216,6 +1352,7 @@ function closeDetail(){
   document.getElementById('list-meta').style.display='flex';
   renderList();
   updateMarkerIcons();
+  updatePOIControls();
 }
 
 /* ============================================================
@@ -1229,6 +1366,7 @@ function toggleDashboard(){
 
 function openDashboard(){
   document.getElementById('dashboard').classList.add('active');
+  document.body.classList.add('dashboard-open');
   renderDashboard();
   // Cambiar el botón a modo "cerrar"
   var btn = document.getElementById('dashboard-toggle');
@@ -1240,6 +1378,7 @@ function openDashboard(){
 
 function closeDashboard(){
   document.getElementById('dashboard').classList.remove('active');
+  document.body.classList.remove('dashboard-open');
   // Volver el botón al estado normal
   var btn = document.getElementById('dashboard-toggle');
   btn.classList.remove('open');
@@ -1864,6 +2003,250 @@ function kpiCard(label, value, unit, note, color, extraHtml){
     (extraHtml?extraHtml:'')+
     (note?'<div class="kpi-note">'+note+'</div>':'')+
   '</div>';
+}
+
+/* ============================================================
+   EQUIPAMIENTO DEL ENTORNO (POIs vía Overpass)
+   ============================================================ */
+
+// Distancia en metros entre dos puntos lat/lng (fórmula de Haversine)
+function distanceMeters(lat1, lng1, lat2, lng2){
+  var R = 6371000; // radio de la Tierra en metros
+  var toRad = function(d){return d*Math.PI/180;};
+  var dLat = toRad(lat2-lat1);
+  var dLng = toRad(lng2-lng1);
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(toRad(lat1))*Math.cos(toRad(lat2)) *
+          Math.sin(dLng/2)*Math.sin(dLng/2);
+  var c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R*c;
+}
+
+// Construye la query Overpass-QL para un terreno y todas las categorías
+function buildOverpassQuery(lat, lng, radius){
+  var allQueries = [];
+  POI_CATEGORIES.forEach(function(cat){
+    cat.queries.forEach(function(q){
+      // Cada query tiene formato: node["amenity"="school"](around:RADIO,LAT,LNG);
+      allQueries.push(q+'(around:'+radius+','+lat+','+lng+');');
+    });
+  });
+  return '[out:json][timeout:25];('+allQueries.join('')+');out center;';
+}
+
+// Determina a qué categoría pertenece un elemento de OSM según sus tags
+function categorizePOI(tags){
+  if(!tags) return null;
+  if(tags.amenity==='school' || tags.amenity==='university' || tags.amenity==='kindergarten') return 'educacion';
+  if(tags.shop==='supermarket' || tags.amenity==='pharmacy' || tags.shop==='mall' || tags.amenity==='marketplace') return 'comercio';
+  if(tags.leisure==='park' || tags.leisure==='garden' || tags.landuse==='recreation_ground') return 'areas_verdes';
+  if(tags.railway==='station' || tags.station==='subway' || tags.railway==='subway_entrance' || tags.highway==='bus_stop') return 'transporte';
+  return null;
+}
+
+// Consulta Overpass y devuelve POIs agrupados por categoría
+function fetchPOIs(terreno, callback){
+  if(!terreno._lat || !terreno._lng){
+    callback(null, 'Sin coordenadas');
+    return;
+  }
+
+  // Usar cache si existe
+  var cacheKey = terreno._id+'_'+POI_RADIUS;
+  if(poiCache[cacheKey]){
+    callback(poiCache[cacheKey], null);
+    return;
+  }
+
+  var query = buildOverpassQuery(terreno._lat, terreno._lng, POI_RADIUS);
+  var url = 'https://overpass-api.de/api/interpreter';
+
+  fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: 'data='+encodeURIComponent(query)
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var byCategory = { educacion:[], comercio:[], areas_verdes:[], transporte:[] };
+    if(data.elements){
+      data.elements.forEach(function(el){
+        var cat = categorizePOI(el.tags);
+        if(!cat) return;
+        // Para 'way' (polígonos), Overpass devuelve el centro en el campo 'center'
+        var lat = el.lat || (el.center && el.center.lat);
+        var lng = el.lon || (el.center && el.center.lon);
+        if(!lat || !lng) return;
+        var dist = Math.round(distanceMeters(terreno._lat, terreno._lng, lat, lng));
+        if(dist > POI_RADIUS) return; // descartar si supera el radio
+        var name = (el.tags && el.tags.name) || '(sin nombre)';
+        // Evitar duplicados por nombre + cercanía
+        var dup = byCategory[cat].some(function(p){
+          return p.name===name && Math.abs(p.distance-dist)<50;
+        });
+        if(dup) return;
+        byCategory[cat].push({ name:name, lat:lat, lng:lng, distance:dist, tags:el.tags });
+      });
+      // Ordenar cada categoría por distancia
+      Object.keys(byCategory).forEach(function(k){
+        byCategory[k].sort(function(a,b){return a.distance-b.distance;});
+      });
+    }
+    poiCache[cacheKey] = byCategory;
+    callback(byCategory, null);
+  })
+  .catch(function(err){
+    console.error('Overpass error:', err);
+    callback(null, 'Error al consultar Overpass');
+  });
+}
+
+// HTML de la sección "Equipamiento del entorno" en el detalle
+function buildPOISectionHtml(terreno){
+  if(!terreno._lat || !terreno._lng){
+    return '<div class="no-data">Sin coordenadas para buscar equipamiento</div>';
+  }
+  // Contenedor que se llena async
+  return '<div id="poi-content">'+
+    '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--font-mono);color:var(--text-faint);padding:14px 0">'+
+      '<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>'+
+      '<span>Consultando OpenStreetMap...</span>'+
+    '</div>'+
+  '</div>';
+}
+
+// Renderiza los POIs en la sección del detalle (tras la respuesta async)
+function renderPOIs(byCategory, error){
+  var el = document.getElementById('poi-content');
+  if(!el) return;
+  if(error){
+    el.innerHTML = '<div class="no-data">'+error+'</div>';
+    return;
+  }
+  if(!byCategory){
+    el.innerHTML = '<div class="no-data">Sin resultados</div>';
+    return;
+  }
+
+  var html = '<div style="display:flex;flex-direction:column;gap:6px">';
+  POI_CATEGORIES.forEach(function(cat){
+    var list = byCategory[cat.key] || [];
+    var count = list.length;
+    var nearest = list[0];
+    var nearestText = nearest
+      ? '<span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">+ cercano: '+nearest.distance+' m</span>'
+      : '<span style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono)">sin resultados</span>';
+
+    var detailsList = '';
+    if(list.length){
+      detailsList = '<div class="poi-details" style="display:none;padding:8px 0 4px 32px;border-left:2px solid '+cat.bgColor+';margin-left:14px">'+
+        list.slice(0,12).map(function(p){
+          return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 8px;color:var(--text-muted)">'+
+            '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+p.name+'</span>'+
+            '<span style="font-family:var(--font-mono);font-size:10px;margin-left:8px;color:var(--text-faint)">'+p.distance+' m</span>'+
+          '</div>';
+        }).join('')+
+        (list.length>12?'<div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);padding:4px 8px">+ '+(list.length-12)+' más</div>':'')+
+      '</div>';
+    }
+
+    var clickHandler = list.length
+      ? 'onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'.poi-arrow\').style.transform=this.nextElementSibling.style.display===\'none\'?\'\':\'rotate(90deg)\'"'
+      : '';
+    var cursor = list.length ? 'cursor:pointer' : 'cursor:default';
+
+    html += '<div>'+
+      '<div '+clickHandler+' style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+cat.bgColor+';border-radius:var(--radius);'+cursor+';transition:background 0.1s">'+
+        '<span style="font-size:18px">'+cat.icon+'</span>'+
+        '<div style="flex:1">'+
+          '<div style="font-size:13px;font-weight:500;color:'+cat.color+'">'+cat.label+'</div>'+
+          '<div>'+nearestText+'</div>'+
+        '</div>'+
+        '<div style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:'+cat.color+';min-width:32px;text-align:right">'+count+'</div>'+
+        (list.length?'<span class="poi-arrow" style="color:'+cat.color+';font-size:10px;transition:transform 0.15s">▶</span>':'')+
+      '</div>'+
+      detailsList+
+    '</div>';
+  });
+  html += '</div>';
+  html += '<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-top:10px;text-align:right">Radio: '+POI_RADIUS+' m · Datos: OpenStreetMap</div>';
+
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   CAPAS DE EQUIPAMIENTO EN EL MAPA
+   ============================================================ */
+var poiMarkers = { educacion:[], comercio:[], areas_verdes:[], transporte:[] };
+
+function clearPOIMarkersOfCategory(catKey){
+  poiMarkers[catKey].forEach(function(m){map.removeLayer(m);});
+  poiMarkers[catKey] = [];
+}
+
+function clearAllPOIMarkers(){
+  Object.keys(poiMarkers).forEach(clearPOIMarkersOfCategory);
+}
+
+function drawPOIMarkers(byCategory, catKey){
+  var cat = POI_CATEGORIES.find(function(c){return c.key===catKey;});
+  if(!cat) return;
+  var list = byCategory[catKey] || [];
+  list.forEach(function(p){
+    var icon = L.divIcon({
+      html: '<div style="background:'+cat.color+';color:white;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3)">'+cat.icon+'</div>',
+      className: '',
+      iconSize: [22,22],
+      iconAnchor: [11,11]
+    });
+    var marker = L.marker([p.lat, p.lng], {icon:icon}).addTo(map);
+    marker.bindTooltip(p.name+' · '+p.distance+' m', {direction:'top', offset:[0,-8]});
+    poiMarkers[catKey].push(marker);
+  });
+}
+
+function togglePOICategory(catKey){
+  poiVisible[catKey] = !poiVisible[catKey];
+  // Actualizar UI del botón
+  var btn = document.getElementById('poi-btn-'+catKey);
+  if(btn) btn.classList.toggle('active', poiVisible[catKey]);
+
+  if(poiVisible[catKey]){
+    // Necesitamos los POIs del terreno seleccionado
+    if(!selectedId){
+      poiVisible[catKey] = false;
+      if(btn) btn.classList.remove('active');
+      return;
+    }
+    var t = allTerrains.find(function(x){return x._id==selectedId;});
+    if(!t) return;
+    fetchPOIs(t, function(byCat, err){
+      if(err) return;
+      drawPOIMarkers(byCat, catKey);
+    });
+  } else {
+    clearPOIMarkersOfCategory(catKey);
+  }
+}
+
+// Renderizar el panel flotante de capas POI (aparece cuando hay terreno seleccionado)
+function updatePOIControls(){
+  var panel = document.getElementById('poi-controls');
+  if(!panel) return;
+  if(selectedId){
+    panel.style.display = 'flex';
+  } else {
+    panel.style.display = 'none';
+    // Apagar todas las capas si no hay terreno seleccionado
+    Object.keys(poiVisible).forEach(function(k){
+      if(poiVisible[k]){
+        poiVisible[k] = false;
+        var btn = document.getElementById('poi-btn-'+k);
+        if(btn) btn.classList.remove('active');
+      }
+    });
+    clearAllPOIMarkers();
+  }
 }
 
 /* ============================================================
