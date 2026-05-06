@@ -1091,7 +1091,7 @@ function buildComparisonHtml(t){
     '</tr>';
   }
 
-  return bestCard+rankInfo+
+  return rankInfo+
     '<table class="cmp-table">'+
       '<thead><tr>'+
         '<th>Métrica</th>'+
@@ -1307,6 +1307,7 @@ function renderDashboard(){
     renderProductivitySection() +
     renderPricesSection(data) +
     renderGeoSection(data) +
+    renderLeadersSection(data) +
     renderBrokersSection(data) +
     renderEvolutionSection(data);
 
@@ -1507,14 +1508,95 @@ function renderDonut(counts, total){
   '</div>';
 }
 
-/* --- 05. RANKING DE CORREDORES --- */
+/* --- 05. LÍDERES POR COMUNA --- */
+function renderLeadersSection(data){
+  // Agrupar terrenos por comuna y encontrar el más barato (mínimo UF/m²) de cada una
+  var byComuna = groupBy(data, function(t){return g(t,'comuna')||'Sin comuna';});
+
+  var comunaLeaders = Object.keys(byComuna).map(function(comuna){
+    var list = byComuna[comuna];
+    // Solo considerar terrenos con UF/m² > 0
+    var conPrecio = list.filter(function(t){return t._uf_m2>0;});
+    if(!conPrecio.length) return null;
+
+    var sorted = conPrecio.slice().sort(function(a,b){return a._uf_m2-b._uf_m2;});
+    var lider = sorted[0];
+    var precioProm = mean(conPrecio.map(function(t){return t._uf_m2;}));
+    var ahorro = precioProm>0 ? Math.round((precioProm-lider._uf_m2)/precioProm*100) : 0;
+
+    return {
+      comuna: comuna,
+      total: list.length,
+      conPrecio: conPrecio.length,
+      lider: lider,
+      precioProm: precioProm,
+      ahorro: ahorro
+    };
+  }).filter(function(x){return x!==null;});
+
+  // Ordenar por cantidad de terrenos (más oferta = más relevante)
+  comunaLeaders.sort(function(a,b){return b.total-a.total;});
+
+  if(!comunaLeaders.length){
+    return '<div class="dash-section">'+
+      '<div class="dash-section-head"><span class="dash-sec-num">05</span><span class="dash-sec-title">Líderes por comuna</span></div>'+
+      '<div class="dash-sec-sub">El terreno más barato de cada comuna en tu base</div>'+
+      '<div class="dash-card"><div class="no-data">Sin terrenos con UF/m² registrado</div></div>'+
+    '</div>';
+  }
+
+  var rows = comunaLeaders.map(function(cl){
+    var l = cl.lider;
+    var addr = g(l,'direccion') || 'Sin dirección';
+    var ufm2 = Math.round(l._uf_m2*10)/10;
+    var m2 = l._m2 ? Math.round(l._m2).toLocaleString('es-CL')+' m²' : '—';
+    var uf = l._uf ? 'UF '+Math.round(l._uf).toLocaleString('es-CL') : '—';
+    var ahorroBadge = cl.ahorro>0
+      ? '<span class="score-pill score-hi" title="Más barato que el promedio de la comuna">−'+cl.ahorro+'% vs prom.</span>'
+      : '<span class="score-pill score-mid">único con precio</span>';
+    var coverage = cl.conPrecio<cl.total
+      ? '<span style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono)"> ('+cl.conPrecio+'/'+cl.total+' c/precio)</span>'
+      : '';
+
+    return '<tr style="cursor:pointer" onclick="closeDashboard(); selectTerrain('+l._id+')">'+
+      '<td>'+
+        '<div style="font-weight:500;font-size:13px">'+cl.comuna+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">'+cl.total+' terreno'+(cl.total!==1?'s':'')+coverage+'</div>'+
+      '</td>'+
+      '<td>'+
+        '<div style="font-family:var(--font-serif);font-size:13px;font-weight:500">'+addr+'</div>'+
+        '<div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px">'+m2+' · '+uf+'</div>'+
+      '</td>'+
+      '<td class="num"><strong style="font-family:var(--font-serif);font-size:16px;color:var(--green)">'+ufm2+'</strong></td>'+
+      '<td class="num">'+ahorroBadge+'</td>'+
+    '</tr>';
+  }).join('');
+
+  return '<div class="dash-section">'+
+    '<div class="dash-section-head"><span class="dash-sec-num">05</span><span class="dash-sec-title">Líderes por comuna</span></div>'+
+    '<div class="dash-sec-sub">El terreno más barato de cada comuna · Click en una fila para abrir el detalle</div>'+
+    '<div class="dash-card" style="padding:8px 16px">'+
+      '<table class="corr-table">'+
+        '<thead><tr>'+
+          '<th>Comuna</th>'+
+          '<th>Terreno más barato</th>'+
+          '<th class="num">UF/m²</th>'+
+          '<th class="num">Ahorro</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table>'+
+    '</div>'+
+  '</div>';
+}
+
+/* --- 06. RANKING DE CORREDORES --- */
 function renderBrokersSection(data){
   // Solo terrenos con corredor definido
   var withBroker = data.filter(function(t){return t._corredor;});
 
   if(!withBroker.length){
     return '<div class="dash-section">'+
-      '<div class="dash-section-head"><span class="dash-sec-num">05</span><span class="dash-sec-title">Ranking de corredores</span></div>'+
+      '<div class="dash-section-head"><span class="dash-sec-num">06</span><span class="dash-sec-title">Ranking de corredores</span></div>'+
       '<div class="dash-sec-sub">Quién te entrega la mejor información</div>'+
       '<div class="dash-card">'+
         '<div class="corr-empty">'+
@@ -1592,7 +1674,7 @@ function renderBrokersSection(data){
     : '';
 
   return '<div class="dash-section">'+
-    '<div class="dash-section-head"><span class="dash-sec-num">05</span><span class="dash-sec-title">Ranking de corredores</span></div>'+
+    '<div class="dash-section-head"><span class="dash-sec-num">06</span><span class="dash-sec-title">Ranking de corredores</span></div>'+
     '<div class="dash-sec-sub">Score combina '+Math.round(BROKER_WEIGHTS.volumen*100)+'% volumen + '+Math.round(BROKER_WEIGHTS.hitRate*100)+'% hit rate + '+Math.round(BROKER_WEIGHTS.calidad*100)+'% calidad de info</div>'+
     infoNote+
     '<div class="dash-card" style="padding:16px 20px">'+
@@ -1621,10 +1703,10 @@ function renderQualityDots(score){
   return '<span style="white-space:nowrap">'+dots+'</span>';
 }
 
-/* --- 06. EVOLUCIÓN TEMPORAL --- */
+/* --- 07. EVOLUCIÓN TEMPORAL --- */
 function renderEvolutionSection(data){
   return '<div class="dash-section">'+
-    '<div class="dash-section-head"><span class="dash-sec-num">06</span><span class="dash-sec-title">Evolución temporal</span></div>'+
+    '<div class="dash-section-head"><span class="dash-sec-num">07</span><span class="dash-sec-title">Evolución temporal</span></div>'+
     '<div class="dash-sec-sub">Volumen mensual apilado por resultado + UF/m² promedio</div>'+
     '<div class="dash-card">'+
       '<canvas id="evo-canvas" class="evo-chart"></canvas>'+
