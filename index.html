@@ -100,6 +100,7 @@
   #float-filters .chip.active-todos { background: var(--text); color: var(--surface); }
   #float-filters .chip.active-analizando { background: var(--amber-bg); color: var(--amber); }
   #float-filters .chip.active-rechazado { background: var(--red-bg); color: var(--red); }
+  #float-filters .chip.active-positivo { background: var(--green-bg); color: var(--green); }
 
   /* Botón de fechas + popover */
   #date-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
@@ -461,6 +462,7 @@
       <div class="mc-wrap" id="float-filters">
         <button class="chip active-todos" onclick="setFilter('todos',this)">Todos</button>
         <button class="chip" onclick="setFilter('analizando',this)">Analizando</button>
+        <button class="chip" onclick="setFilter('positivo',this)">Aprobado</button>
         <button class="chip" onclick="setFilter('rechazado',this)">Rechazado</button>
       </div>
       <div style="position:relative">
@@ -1434,7 +1436,10 @@ function renderDashboard(){
   } else {
     scopeParts.push('histórico completo');
   }
-  if(activeFilter!=='todos') scopeParts.push('filtro: '+activeFilter);
+  if(activeFilter!=='todos'){
+    var filterLabel = activeFilter==='positivo' ? 'aprobado' : activeFilter;
+    scopeParts.push('filtro: '+filterLabel);
+  }
   document.getElementById('dash-scope').textContent=scopeParts.join(' · ');
 
   var body=document.getElementById('dash-body');
@@ -1465,11 +1470,7 @@ function renderPipelineSection(data){
   var positivo = data.filter(function(t){return t._resultado==='positivo';}).length;
   var evaluados = analizando + rechazado + positivo;
   var tasaRechazo = evaluados ? Math.round(rechazado/evaluados*100) : 0;
-
-  // Últimos 30 días (sobre allTerrains, no sobre data filtrada)
-  var hoy=new Date();
-  var hace30=new Date(hoy.getTime()-30*24*3600*1000);
-  var u30 = terrainsInRange(hace30,hoy).length;
+  var tasaAprobacion = evaluados ? Math.round(positivo/evaluados*100) : 0;
 
   return '<div class="dash-section">'+
     '<div class="dash-section-head"><span class="dash-sec-num">01</span><span class="dash-sec-title">Pipeline</span></div>'+
@@ -1477,8 +1478,8 @@ function renderPipelineSection(data){
     '<div class="kpi-grid">'+
       kpiCard('Terrenos totales', total, '', 'En el filtro actual', '') +
       kpiCard('En análisis', analizando, '', 'Pipeline activo', 'amber') +
+      kpiCard('Aprobados', positivo, '', tasaAprobacion+'% de evaluados', 'green') +
       kpiCard('Tasa de rechazo', tasaRechazo, '%', rechazado+' de '+evaluados+' evaluados', 'red') +
-      kpiCard('Últimos 30 días', u30, '', 'Sobre histórico completo', 'accent') +
     '</div>'+
   '</div>';
 }
@@ -1617,7 +1618,7 @@ function renderDonut(counts, total){
   var segments=[
     {key:'analizando', label:'Analizando', color:RESULT_COLOR.analizando, val:counts.analizando||0},
     {key:'rechazado', label:'Rechazado', color:RESULT_COLOR.rechazado, val:counts.rechazado||0},
-    {key:'positivo', label:'Positivo', color:RESULT_COLOR.positivo, val:counts.positivo||0}
+    {key:'positivo', label:'Aprobado', color:RESULT_COLOR.positivo, val:counts.positivo||0}
   ].filter(function(s){return s.val>0;});
 
   var r=50, cx=60, cy=60, circ=2*Math.PI*r;
@@ -1855,7 +1856,7 @@ function renderEvolutionSection(data){
       '<div class="evo-legend">'+
         '<span><i style="background:'+RESULT_COLOR.analizando+'"></i>Analizando</span>'+
         '<span><i style="background:'+RESULT_COLOR.rechazado+'"></i>Rechazado</span>'+
-        '<span><i style="background:'+RESULT_COLOR.positivo+'"></i>Positivo</span>'+
+        '<span><i style="background:'+RESULT_COLOR.positivo+'"></i>Aprobado</span>'+
         '<span><i style="background:'+'#2D5BE3'+';border-radius:50%;width:8px;height:8px"></i>UF/m² prom</span>'+
       '</div>'+
     '</div>'+
