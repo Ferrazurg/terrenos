@@ -300,6 +300,39 @@
   #dashboard-toggle svg { width: 14px; height: 14px; }
   #dashboard-toggle .dt-badge { background: var(--accent); color: var(--surface); font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
 
+  /* BOTÓN MODO CAPTURA */
+  #capture-toggle {
+    position: absolute; top: 58px; right: 14px; z-index: 500;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 14px; font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.15s;
+  }
+  #capture-toggle:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  #capture-toggle.active { background: var(--purple); border-color: var(--purple); color: var(--surface); }
+  #capture-toggle.active:hover { background: #5A3FA8; border-color: #5A3FA8; color: var(--surface); }
+  #capture-toggle svg { width: 14px; height: 14px; }
+
+  /* Cuando modo captura está activo, ocultar el botón también en dashboard */
+  body.dashboard-open #capture-toggle { display: none !important; }
+
+  /* Etiquetas permanentes de POIs en modo captura */
+  body.capture-mode .leaflet-tooltip.poi-label-permanent {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 7px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    opacity: 1;
+  }
+  body.capture-mode .leaflet-tooltip.poi-label-permanent::before {
+    border-top-color: var(--border);
+  }
+
   /* ============ DASHBOARD PANEL ============ */
   #dashboard {
     position: absolute; inset: 0; background: var(--bg); z-index: 400;
@@ -501,6 +534,16 @@
       <span class="dt-badge" id="dt-count">0</span>
     </button>
 
+    <!-- BOTÓN MODO CAPTURA -->
+    <button id="capture-toggle" onclick="toggleCaptureMode()" title="Modo captura: agranda puntos y muestra etiquetas para tomar pantallazos">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1.5" y="3.5" width="13" height="10" rx="1.5"/>
+        <circle cx="8" cy="8.5" r="2.5"/>
+        <path d="M5.5 3.5L6.5 2h3L10.5 3.5"/>
+      </svg>
+      <span id="capture-label">Captura</span>
+    </button>
+
     <!-- PANEL FLOTANTE DE CAPAS POI (visible solo cuando hay terreno seleccionado) -->
     <div id="poi-controls">
       <span class="poi-label">Equipamiento</span>
@@ -514,7 +557,7 @@
         <span class="poi-btn-icon">🌳</span><span>Áreas verdes</span>
       </button>
       <button class="poi-btn" id="poi-btn-transporte" data-cat="transporte" onclick="togglePOICategory('transporte')">
-        <span class="poi-btn-icon">🚇</span><span>Transporte</span>
+        <span class="poi-btn-icon">🚇</span><span>Metro</span>
       </button>
     </div>
 
@@ -669,15 +712,13 @@ var POI_CATEGORIES = [
   },
   {
     key: 'transporte',
-    label: 'Transporte',
+    label: 'Metro',
     icon: '🚇',
     color: '#2D5BE3',
     bgColor: '#EAF0FE',
     queries: [
-      'node["railway"="station"]',
       'node["station"="subway"]',
-      'node["railway"="subway_entrance"]',
-      'node["highway"="bus_stop"]'
+      'node["railway"="subway_entrance"]'
     ]
   }
 ];
@@ -1016,12 +1057,19 @@ function toggleComuna(comuna){
 function makeIcon(t){
   var col=RESULT_COLOR[t._resultado]||'#888';
   var sel=t._id==selectedId;
-  var sz=sel?20:16;
+  // En modo captura, agrandar los puntos significativamente
+  var sz;
+  if(captureMode){
+    sz = sel ? 34 : 28;
+  } else {
+    sz = sel ? 20 : 16;
+  }
+  var border = captureMode ? 4 : 3;
   var shadow = sel
     ? '0 0 0 4px rgba(45,91,227,0.35), 0 2px 8px rgba(0,0,0,0.4)'
     : '0 1px 4px rgba(0,0,0,0.4)';
   return L.divIcon({
-    html:'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+col+';border:3px solid white;box-shadow:'+shadow+';cursor:pointer"></div>',
+    html:'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+col+';border:'+border+'px solid white;box-shadow:'+shadow+';cursor:pointer"></div>',
     className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
   });
 }
@@ -2041,7 +2089,7 @@ function categorizePOI(tags){
   if(tags.amenity==='school' || tags.amenity==='university' || tags.amenity==='kindergarten') return 'educacion';
   if(tags.shop==='supermarket' || tags.amenity==='pharmacy' || tags.shop==='mall' || tags.amenity==='marketplace') return 'comercio';
   if(tags.leisure==='park' || tags.leisure==='garden' || tags.landuse==='recreation_ground') return 'areas_verdes';
-  if(tags.railway==='station' || tags.station==='subway' || tags.railway==='subway_entrance' || tags.highway==='bus_stop') return 'transporte';
+  if(tags.station==='subway' || tags.railway==='subway_entrance') return 'transporte';
   return null;
 }
 
@@ -2193,15 +2241,31 @@ function drawPOIMarkers(byCategory, catKey){
   var cat = POI_CATEGORIES.find(function(c){return c.key===catKey;});
   if(!cat) return;
   var list = byCategory[catKey] || [];
+  // En modo captura, los íconos son más grandes
+  var sz = captureMode ? 32 : 22;
+  var fontSz = captureMode ? 16 : 11;
+  var border = captureMode ? 3 : 2;
   list.forEach(function(p){
     var icon = L.divIcon({
-      html: '<div style="background:'+cat.color+';color:white;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3)">'+cat.icon+'</div>',
+      html: '<div style="background:'+cat.color+';color:white;width:'+sz+'px;height:'+sz+'px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:'+fontSz+'px;border:'+border+'px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3)">'+cat.icon+'</div>',
       className: '',
-      iconSize: [22,22],
-      iconAnchor: [11,11]
+      iconSize: [sz,sz],
+      iconAnchor: [sz/2, sz/2]
     });
     var marker = L.marker([p.lat, p.lng], {icon:icon}).addTo(map);
-    marker.bindTooltip(p.name+' · '+p.distance+' m', {direction:'top', offset:[0,-8]});
+
+    if(captureMode){
+      // Etiqueta permanente arriba del ícono
+      marker.bindTooltip(p.name, {
+        direction: 'top',
+        offset: [0, -sz/2 - 2],
+        permanent: true,
+        className: 'poi-label-permanent'
+      });
+    } else {
+      // Tooltip al hover como antes
+      marker.bindTooltip(p.name+' · '+p.distance+' m', {direction:'top', offset:[0,-8]});
+    }
     poiMarkers[catKey].push(marker);
   });
 }
@@ -2247,6 +2311,48 @@ function updatePOIControls(){
       }
     });
     clearAllPOIMarkers();
+  }
+}
+
+/* ============================================================
+   MODO CAPTURA
+   Agranda puntos y muestra etiquetas permanentes para tomar pantallazos.
+   ============================================================ */
+var captureMode = false;
+
+function toggleCaptureMode(){
+  captureMode = !captureMode;
+  var btn = document.getElementById('capture-toggle');
+  var label = document.getElementById('capture-label');
+  if(captureMode){
+    btn.classList.add('active');
+    label.textContent = 'Salir captura';
+    document.body.classList.add('capture-mode');
+  } else {
+    btn.classList.remove('active');
+    label.textContent = 'Captura';
+    document.body.classList.remove('capture-mode');
+  }
+
+  // Redibujar los puntos de terrenos con tamaños nuevos
+  renderMarkers();
+
+  // Redibujar las capas POI activas con tamaños nuevos + etiquetas
+  if(selectedId){
+    var t = allTerrains.find(function(x){return x._id==selectedId;});
+    if(t){
+      Object.keys(poiVisible).forEach(function(catKey){
+        if(poiVisible[catKey]){
+          // Limpiar markers viejos
+          clearPOIMarkersOfCategory(catKey);
+          // Volver a dibujar con el modo nuevo
+          fetchPOIs(t, function(byCat, err){
+            if(err) return;
+            drawPOIMarkers(byCat, catKey);
+          });
+        }
+      });
+    }
   }
 }
 
