@@ -672,14 +672,12 @@ var POI_CATEGORIES = [
     icon: '🎓',
     color: '#6B4FBB',
     bgColor: '#EEE9FB',
-    // Tags de OpenStreetMap a buscar
+    // Tags de OpenStreetMap a buscar (solo colegios y universidades)
     queries: [
       'node["amenity"="school"]',
       'way["amenity"="school"]',
       'node["amenity"="university"]',
-      'way["amenity"="university"]',
-      'node["amenity"="kindergarten"]',
-      'way["amenity"="kindergarten"]'
+      'way["amenity"="university"]'
     ]
   },
   {
@@ -2086,7 +2084,7 @@ function buildOverpassQuery(lat, lng, radius){
 // Determina a qué categoría pertenece un elemento de OSM según sus tags
 function categorizePOI(tags){
   if(!tags) return null;
-  if(tags.amenity==='school' || tags.amenity==='university' || tags.amenity==='kindergarten') return 'educacion';
+  if(tags.amenity==='school' || tags.amenity==='university') return 'educacion';
   if(tags.shop==='supermarket' || tags.amenity==='pharmacy' || tags.shop==='mall' || tags.amenity==='marketplace') return 'comercio';
   if(tags.leisure==='park' || tags.leisure==='garden' || tags.landuse==='recreation_ground') return 'areas_verdes';
   if(tags.station==='subway' || tags.railway==='subway_entrance') return 'transporte';
@@ -2140,6 +2138,10 @@ function fetchPOIs(terreno, callback){
       Object.keys(byCategory).forEach(function(k){
         byCategory[k].sort(function(a,b){return a.distance-b.distance;});
       });
+
+      // Agrupar estaciones de metro: entradas a < 150m entre sí son la misma estación.
+      // Después de agrupar, quedarse solo con las 2 estaciones más cercanas.
+      byCategory.transporte = agruparEstacionesMetro(byCategory.transporte);
     }
     poiCache[cacheKey] = byCategory;
     callback(byCategory, null);
@@ -2148,6 +2150,59 @@ function fetchPOIs(terreno, callback){
     console.error('Overpass error:', err);
     callback(null, 'Error al consultar Overpass');
   });
+}
+
+// Agrupa entradas de metro cercanas en estaciones únicas.
+// La lista de entrada ya viene ordenada por distancia al terreno.
+function agruparEstacionesMetro(entradas){
+  var UMBRAL_MISMA_ESTACION = 150; // metros entre entradas de la misma estación
+  var MAX_ESTACIONES = 2; // cuántas estaciones mostrar
+
+  var estaciones = [];
+
+  entradas.forEach(function(entrada){
+    // ¿Esta entrada pertenece a una estación ya detectada?
+    var perteneceA = null;
+    for(var i=0;i<estaciones.length;i++){
+      var est = estaciones[i];
+      var d = distanceMeters(entrada.lat, entrada.lng, est.lat, est.lng);
+      if(d < UMBRAL_MISMA_ESTACION){
+        perteneceA = est;
+        break;
+      }
+    }
+
+    if(perteneceA){
+      // Ya existe la estación. Si esta entrada tiene mejor nombre, lo usamos.
+      // (a veces la estación tiene nombre y las entradas no, o viceversa)
+      if(perteneceA.name === '(sin nombre)' && entrada.name !== '(sin nombre)'){
+        perteneceA.name = entrada.name;
+      }
+      // La entrada más cercana define la posición y distancia de la estación
+      // (como la lista viene ordenada, la primera ya es la más cercana, no hacemos nada)
+    } else {
+      // Estación nueva
+      estaciones.push({
+        name: entrada.name,
+        lat: entrada.lat,
+        lng: entrada.lng,
+        distance: entrada.distance,
+        tags: entrada.tags
+      });
+    }
+  });
+
+  // Quedarse con las MAX_ESTACIONES más cercanas (ya están ordenadas)
+  var resultado = estaciones.slice(0, MAX_ESTACIONES);
+
+  // Si alguna estación quedó sin nombre, ponerle un nombre genérico
+  resultado.forEach(function(est){
+    if(est.name === '(sin nombre)' || !est.name){
+      est.name = 'Estación de Metro';
+    }
+  });
+
+  return resultado;
 }
 
 // HTML de la sección "Equipamiento del entorno" en el detalle
