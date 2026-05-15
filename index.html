@@ -849,6 +849,23 @@ var INFO_PESO_TOTAL = INFO_ITEMS.reduce(function(a,x){return a+x.peso;},0);
    Modifica POI_RADIUS para cambiar el radio de búsqueda en metros. */
 var POI_RADIUS = 800; // metros
 
+// CONFIGURACIÓN: cuántos POIs máximo se dibujan en el mapa POR DEFECTO por categoría.
+// La lista del sidebar SIEMPRE muestra todos. Estos topes son solo para el mapa.
+// Cambia los números aquí si quieres más/menos puntos por defecto.
+var POI_MAX_DIBUJADOS = {
+  educacion: 3,
+  comercio: 5,
+  areas_verdes: 3,
+  transporte: 2
+};
+
+// Set de POIs agregados manualmente desde la lista (key: "categoria|nombre|lat|lng")
+// Estos se dibujan ADEMÁS del top por defecto.
+var poiManualSet = {};
+
+// Cache del último byCategory cargado, para que togglePoiManual sepa la lista
+var poiByCategoryCache = null;
+
 var POI_CATEGORIES = [
   {
     key: 'educacion',
@@ -1314,6 +1331,10 @@ function selectTerrain(id){
   if(mercadoOpenForId!==null && mercadoOpenForId!=id){
     closeMercadoPanel();
   }
+  // Limpiar la selección manual de POIs al cambiar de terreno
+  if(selectedId !== null && selectedId !== id){
+    poiManualSet = {};
+  }
   selectedId=id;
   var t=allTerrains.find(function(x){return x._id==id;});
   if(!t)return;
@@ -1639,6 +1660,8 @@ function closeDetail(){
   if(pinnedId!==null){
     unpinTerrain();
   }
+  // Limpiar selección manual de POIs
+  poiManualSet = {};
   selectedId=null;
   document.getElementById('detail-view').classList.remove('active');
   document.getElementById('list-view').style.display='block';
@@ -2795,6 +2818,9 @@ function renderPOIs(byCategory, error){
     return;
   }
 
+  // Guardar el byCategory actual para los handlers de la lista
+  poiByCategoryCache = byCategory;
+
   var html = '<div style="display:flex;flex-direction:column;gap:6px">';
   POI_CATEGORIES.forEach(function(cat){
     var list = byCategory[cat.key] || [];
@@ -2804,16 +2830,35 @@ function renderPOIs(byCategory, error){
       ? '<span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">+ cercano: '+nearest.distance+' m</span>'
       : '<span style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono)">sin resultados</span>';
 
+    // Calcular qué POIs están "en el mapa" para esta categoría:
+    // los del top por defecto + los agregados manualmente
+    var maxN = POI_MAX_DIBUJADOS[cat.key] || 5;
+    var topKeys = {};
+    list.slice(0, maxN).forEach(function(p){ topKeys[poiKey(cat.key,p)] = true; });
+
     var detailsList = '';
     if(list.length){
       detailsList = '<div class="poi-details" style="display:none;padding:8px 0 4px 32px;border-left:2px solid '+cat.bgColor+';margin-left:14px">'+
-        list.slice(0,12).map(function(p){
-          return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 8px;color:var(--text-muted)">'+
-            '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+p.name+'</span>'+
-            '<span style="font-family:var(--font-mono);font-size:10px;margin-left:8px;color:var(--text-faint)">'+p.distance+' m</span>'+
+        list.map(function(p, idx){
+          var k = poiKey(cat.key, p);
+          var inMapa = !!(topKeys[k] || poiManualSet[k]);
+          var esManual = !!poiManualSet[k] && !topKeys[k]; // agregado por click, no del top
+          var dotChar = inMapa ? '●' : '○';
+          var dotColor = inMapa ? cat.color : 'var(--text-faint)';
+          var manualMark = esManual
+            ? '<span title="Agregado manualmente" style="font-size:9px;color:'+cat.color+';margin-left:4px">★</span>'
+            : '';
+          // Escapar comillas en el nombre para usarlo en onclick
+          var safeName = p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+          return '<div class="poi-list-item" onclick="togglePoiManual(\''+cat.key+'\','+idx+')" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 8px;color:var(--text-muted);cursor:pointer;border-radius:4px;transition:background 0.12s" onmouseover="this.style.background=\'var(--bg)\'" onmouseout="this.style.background=\'transparent\'">'+
+            '<span style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">'+
+              '<span style="color:'+dotColor+';font-size:13px;line-height:1">'+dotChar+'</span>'+
+              '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.name+'</span>'+
+              manualMark+
+            '</span>'+
+            '<span style="font-family:var(--font-mono);font-size:10px;margin-left:8px;color:var(--text-faint);flex-shrink:0">'+p.distance+' m</span>'+
           '</div>';
         }).join('')+
-        (list.length>12?'<div style="font-size:10px;color:var(--text-faint);font-family:var(--font-mono);padding:4px 8px">+ '+(list.length-12)+' más</div>':'')+
       '</div>';
     }
 
@@ -2822,7 +2867,7 @@ function renderPOIs(byCategory, error){
       : '';
     var cursor = list.length ? 'cursor:pointer' : 'cursor:default';
 
-    html += '<div>'+
+    html += '<div data-cat="'+cat.key+'">'+
       '<div '+clickHandler+' style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:'+cat.bgColor+';border-radius:var(--radius);'+cursor+';transition:background 0.1s">'+
         '<span style="font-size:18px">'+cat.icon+'</span>'+
         '<div style="flex:1">'+
@@ -2836,7 +2881,7 @@ function renderPOIs(byCategory, error){
     '</div>';
   });
   html += '</div>';
-  html += '<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-top:10px;text-align:right">Radio: '+POI_RADIUS+' m · Datos: OpenStreetMap</div>';
+  html += '<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-top:10px;text-align:right">Radio: '+POI_RADIUS+' m · ● en mapa · ○ click para agregar</div>';
 
   el.innerHTML = html;
 }
@@ -2855,10 +2900,90 @@ function clearAllPOIMarkers(){
   Object.keys(poiMarkers).forEach(clearPOIMarkersOfCategory);
 }
 
+// Genera la clave única de un POI para usar en poiManualSet
+function poiKey(catKey, p){
+  return catKey+'|'+p.name+'|'+p.lat+'|'+p.lng;
+}
+
+// Devuelve la lista de POIs que deben dibujarse en el mapa para una categoría:
+// top N por cercanía + los agregados manualmente desde la lista
+function getPOIsToDraw(byCategory, catKey){
+  var todos = byCategory[catKey] || [];
+  var maxN = POI_MAX_DIBUJADOS[catKey] || 5;
+
+  // Tomar los N más cercanos (la lista ya viene ordenada por distancia)
+  var topN = todos.slice(0, maxN);
+  var topKeys = {};
+  topN.forEach(function(p){ topKeys[poiKey(catKey,p)] = true; });
+
+  // Agregar los que el usuario marcó manualmente y NO están ya en el top
+  var manuales = todos.filter(function(p){
+    var k = poiKey(catKey,p);
+    return poiManualSet[k] && !topKeys[k];
+  });
+
+  return topN.concat(manuales);
+}
+
+// Toggle de un POI de la lista del sidebar:
+// - Si el POI está en el top por defecto → no se puede sacar (queda en el mapa)
+// - Si el POI NO está en el top → se agrega/quita manualmente
+function togglePoiManual(catKey, idx){
+  if(!poiByCategoryCache) return;
+  var list = poiByCategoryCache[catKey] || [];
+  var p = list[idx];
+  if(!p) return;
+  var k = poiKey(catKey, p);
+
+  var maxN = POI_MAX_DIBUJADOS[catKey] || 5;
+  var enTop = idx < maxN;
+
+  if(enTop){
+    // Si está en el top por defecto, lo dejamos siempre. No hacemos nada al click.
+    // (Decisión de diseño: el top siempre se ve, evita confusión)
+    return;
+  }
+
+  // Toggle manual
+  if(poiManualSet[k]){
+    delete poiManualSet[k];
+  } else {
+    poiManualSet[k] = true;
+    // Si la capa de esta categoría está apagada, prenderla automáticamente
+    if(!poiVisible[catKey]){
+      poiVisible[catKey] = true;
+      var btnCat = document.getElementById('poi-btn-'+catKey);
+      if(btnCat) btnCat.classList.add('active');
+    }
+  }
+
+  // Re-dibujar la capa en el mapa
+  clearPOIMarkersOfCategory(catKey);
+  if(poiVisible[catKey]){
+    drawPOIMarkers(poiByCategoryCache, catKey);
+  }
+
+  // Re-renderizar la lista para actualizar el indicador ● / ○
+  renderPOIs(poiByCategoryCache, null);
+
+  // Mantener abiertas las categorías que ya estaban abiertas
+  // (renderPOIs cierra todas por defecto, así que reabrimos las que estaban)
+  // Truco: dejamos abierta solo la que el usuario está manipulando
+  setTimeout(function(){
+    var catBlock = document.querySelector('[data-cat="'+catKey+'"]');
+    if(catBlock){
+      var details = catBlock.querySelector('.poi-details');
+      var arrow = catBlock.querySelector('.poi-arrow');
+      if(details){ details.style.display = 'block'; }
+      if(arrow){ arrow.style.transform = 'rotate(90deg)'; }
+    }
+  }, 0);
+}
+
 function drawPOIMarkers(byCategory, catKey){
   var cat = POI_CATEGORIES.find(function(c){return c.key===catKey;});
   if(!cat) return;
-  var list = byCategory[catKey] || [];
+  var list = getPOIsToDraw(byCategory, catKey);
   // En modo captura, los íconos son más grandes
   var sz = captureMode ? 32 : 22;
   var fontSz = captureMode ? 16 : 11;
