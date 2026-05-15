@@ -347,7 +347,8 @@
   body.dashboard-open .leaflet-control-layers,
   body.dashboard-open .leaflet-control-attribution,
   body.dashboard-open #panel-tab,
-  body.dashboard-open #poi-controls {
+  body.dashboard-open #poi-controls,
+  body.dashboard-open #mercado-panel {
     display: none !important;
   }
   /* Subir z-index de los controles flotantes para que queden sobre el dashboard */
@@ -377,6 +378,120 @@
   .poi-btn[data-cat="comercio"].active { background: #B26A00; }
   .poi-btn[data-cat="areas_verdes"].active { background: #1D7A5F; }
   .poi-btn[data-cat="transporte"].active { background: #2D5BE3; }
+
+  /* PANEL FLOTANTE DE MERCADO DEL SECTOR (esquina inferior derecha) */
+  #mercado-panel {
+    position: absolute; bottom: 24px; right: 14px;
+    z-index: 510;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+    display: none; flex-direction: column;
+    width: 380px; max-width: calc(100vw - 28px);
+    max-height: calc(100vh - 80px);
+    overflow: hidden;
+  }
+  /* En pantallas chicas, si choca con el panel de POIs (abajo centro), subir un poco */
+  @media (max-width: 900px){
+    #mercado-panel { bottom: 90px; }
+  }
+  #mercado-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .mp-title {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-serif); font-size: 14px; font-weight: 500; color: var(--text);
+  }
+  .mp-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #C0392B;
+  }
+  #mercado-close {
+    background: transparent; border: none; color: var(--text-faint); cursor: pointer;
+    font-size: 16px; line-height: 1; padding: 4px 8px; border-radius: var(--radius);
+    transition: all 0.12s;
+  }
+  #mercado-close:hover { background: var(--bg); color: var(--text); }
+  #mercado-content {
+    overflow-y: auto; padding: 12px 14px;
+  }
+  #mercado-content::-webkit-scrollbar { width: 6px; }
+  #mercado-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* KPIs del mercado */
+  .merc-kpi-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .merc-kpi {
+    background: var(--bg); border-radius: var(--radius); padding: 10px 12px;
+  }
+  .merc-kpi-label {
+    font-family: var(--font-mono); font-size: 9.5px; color: var(--text-faint);
+    letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .merc-kpi-val {
+    font-family: var(--font-serif); font-size: 19px; font-weight: 500; color: var(--text);
+    line-height: 1.1;
+  }
+  .merc-kpi-unit {
+    font-size: 11px; color: var(--text-muted); font-family: var(--font-sans); font-weight: 400;
+  }
+
+  /* Lista de proyectos */
+  .merc-section-label {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-faint);
+    letter-spacing: 0.08em; text-transform: uppercase; margin: 6px 0 8px;
+  }
+  .merc-list {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .merc-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; background: var(--bg); border-radius: var(--radius);
+    gap: 10px;
+  }
+  .merc-item-main { flex: 1; min-width: 0; }
+  .merc-item-name {
+    font-size: 12.5px; font-weight: 500; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .merc-item-sub {
+    font-size: 10.5px; color: var(--text-muted); font-family: var(--font-mono);
+    margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .merc-item-dist {
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-faint);
+    flex-shrink: 0;
+  }
+  .merc-foot {
+    font-family: var(--font-mono); font-size: 9.5px; color: var(--text-faint);
+    text-align: right; margin-top: 10px;
+  }
+
+  /* Botón "Ver mercado del sector" en el detalle del terreno */
+  .mercado-trigger {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font-sans); font-size: 12.5px; color: var(--text);
+    transition: all 0.12s;
+  }
+  .mercado-trigger:hover {
+    border-color: #C0392B; color: #C0392B;
+    background: var(--surface);
+  }
+  .mercado-trigger .mt-left { display: flex; align-items: center; gap: 8px; }
+  .mercado-trigger .mt-dot { width: 8px; height: 8px; border-radius: 50%; background: #C0392B; }
+  .mercado-trigger .mt-arrow { color: var(--text-faint); font-size: 14px; }
+  .mercado-trigger.active {
+    background: #C0392B; border-color: #C0392B; color: var(--surface);
+  }
+  .mercado-trigger.active:hover { background: #A33323; border-color: #A33323; color: var(--surface); }
+  .mercado-trigger.active .mt-arrow { color: var(--surface); }
+  .mercado-trigger.active .mt-dot { background: var(--surface); }
 
   #dash-header {
     position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border);
@@ -561,6 +676,18 @@
       </button>
     </div>
 
+    <!-- PANEL FLOTANTE DE MERCADO DEL SECTOR (esquina inferior derecha) -->
+    <div id="mercado-panel">
+      <div id="mercado-head">
+        <div class="mp-title">
+          <span class="mp-dot"></span>
+          <span>Mercado del sector</span>
+        </div>
+        <button id="mercado-close" onclick="closeMercadoPanel()" title="Cerrar">✕</button>
+      </div>
+      <div id="mercado-content"></div>
+    </div>
+
     <!-- PANEL DASHBOARD -->
     <div id="dashboard">
       <div id="dash-header">
@@ -743,6 +870,7 @@ function normalizeResultado(raw){
 var RESULT_COLOR={positivo:'#1D7A5F',analizando:'#B26A00',rechazado:'#C0392B'};
 
 var allTerrains=[], filtered=[], activeFilter='todos', selectedId=null, markers={}, map;
+var allMercado=[];
 var dateFrom=null, dateTo=null, activePreset=null;
 
 /* ============================================================
@@ -779,6 +907,12 @@ function loadData(){
     .then(function(json){
       if(json.terrenos&&Array.isArray(json.terrenos)){
         allTerrains=json.terrenos.map(normalizeRow);
+        // Cargar data de mercado si viene en la respuesta
+        if(json.mercado&&Array.isArray(json.mercado)){
+          allMercado=json.mercado.map(normalizeMercadoRow);
+        } else {
+          allMercado=[];
+        }
         showLoading(false);
         applyFilters();
         fitBounds();
@@ -789,6 +923,22 @@ function loadData(){
       document.getElementById('count-text').textContent='Error al cargar';
       showLoading(false);
     });
+}
+
+// Normaliza una fila de la hoja Mercado
+function normalizeMercadoRow(r){
+  var m = {};
+  m.nombre = (r['Nombre Proyecto']||'').toString().trim();
+  m.direccion = (r['Direccion']||r['Dirección']||'').toString().trim();
+  m.comuna = (r['Comuna']||'').toString().trim();
+  m.desarrollador = (r['Desarrollador']||'').toString().trim();
+  m.lat = parseFloat(r['lat'])||null;
+  m.lng = parseFloat(r['lng'])||null;
+  m.uf_m2 = parseFloat(r['UF/m2 Proyecto'])||0;
+  m.ticket = parseFloat(r['Ticket Proyecto'])||0;
+  m.umes = parseFloat(r['U/mes Proyecto'])||0;
+  m.superficie = parseFloat(r['Superficie Proyecto'])||0;
+  return m;
 }
 
 function normalizeRow(r){
@@ -1093,6 +1243,10 @@ function updateMarkerIcons(){
    DETAIL VIEW (igual que antes)
    ============================================================ */
 function selectTerrain(id){
+  // Si hay panel de mercado abierto de otro terreno, cerrarlo
+  if(mercadoOpenForId!==null && mercadoOpenForId!=id){
+    closeMercadoPanel();
+  }
   selectedId=id;
   var t=allTerrains.find(function(x){return x._id==id;});
   if(!t)return;
@@ -1381,6 +1535,15 @@ function fillDetail(t){
       buildPOISectionHtml(t)+
     '</div>'+
     '<div>'+
+      '<div class="section-label">Mercado</div>'+
+      '<button class="mercado-trigger'+(mercadoOpenForId==t._id?' active':'')+'" id="mercado-trigger-btn" onclick="toggleMercadoPanel('+t._id+')">'+
+        '<span class="mt-left"><span class="mt-dot"></span>'+
+          '<span>'+(mercadoOpenForId==t._id?'Ocultar mercado del sector':'Ver mercado del sector')+'</span>'+
+        '</span>'+
+        '<span class="mt-arrow">→</span>'+
+      '</button>'+
+    '</div>'+
+    '<div>'+
       '<div class="section-label">Documentos</div>'+lh+
     '</div>'+
     '<div style="height:20px"></div>';
@@ -1401,6 +1564,7 @@ function closeDetail(){
   renderList();
   updateMarkerIcons();
   updatePOIControls();
+  closeMercadoPanel();
 }
 
 /* ============================================================
@@ -2203,6 +2367,198 @@ function agruparEstacionesMetro(entradas){
   });
 
   return resultado;
+}
+
+/* ============================================================
+   MERCADO DEL SECTOR
+   Encuentra proyectos de mercado dentro de un radio del terreno
+   y calcula promedios simples de las variables clave.
+   ============================================================ */
+var MERCADO_RADIUS = 800; // metros
+var mercadoMarkers = []; // markers de los proyectos en el mapa
+var mercadoOpenForId = null; // id del terreno con panel abierto
+
+function getMercadoSector(terreno){
+  if(!terreno._lat || !terreno._lng) return null;
+  if(!allMercado.length) return { sinData:true };
+
+  var cercanos = [];
+  allMercado.forEach(function(p){
+    if(!p.lat || !p.lng) return;
+    var dist = Math.round(distanceMeters(terreno._lat, terreno._lng, p.lat, p.lng));
+    if(dist <= MERCADO_RADIUS){
+      cercanos.push({
+        nombre: p.nombre,
+        direccion: p.direccion,
+        desarrollador: p.desarrollador,
+        lat: p.lat,
+        lng: p.lng,
+        distance: dist,
+        uf_m2: p.uf_m2,
+        ticket: p.ticket,
+        umes: p.umes,
+        superficie: p.superficie
+      });
+    }
+  });
+
+  if(!cercanos.length) return { sinCercanos:true };
+  cercanos.sort(function(a,b){return a.distance-b.distance;});
+
+  function promedioDe(getter){
+    var vals = cercanos.map(getter).filter(function(v){return v>0;});
+    if(!vals.length) return null;
+    return vals.reduce(function(a,b){return a+b;},0)/vals.length;
+  }
+
+  return {
+    proyectos: cercanos,
+    count: cercanos.length,
+    promUFm2: promedioDe(function(p){return p.uf_m2;}),
+    promTicket: promedioDe(function(p){return p.ticket;}),
+    promUmes: promedioDe(function(p){return p.umes;}),
+    promSuperficie: promedioDe(function(p){return p.superficie;})
+  };
+}
+
+// Genera el HTML interno del panel flotante de mercado
+function renderMercadoPanelContent(terreno){
+  var data = getMercadoSector(terreno);
+
+  if(!terreno._lat || !terreno._lng){
+    return '<div class="no-data" style="padding:14px">Sin coordenadas para analizar el mercado</div>';
+  }
+  if(data && data.sinData){
+    return '<div class="no-data" style="padding:14px">Aún no hay data de mercado cargada. Agrega proyectos en la pestaña Mercado del Sheet.</div>';
+  }
+  if(data && data.sinCercanos){
+    return '<div class="no-data" style="padding:14px">No hay proyectos de mercado a menos de '+MERCADO_RADIUS+' m de este terreno.</div>';
+  }
+
+  function fmtNum(n, dec){
+    if(n===null||n===undefined) return '—';
+    return n.toLocaleString('es-CL',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  }
+
+  // Tarjetas con los 4 promedios
+  var kpis =
+    '<div class="merc-kpi-grid">'+
+      '<div class="merc-kpi">'+
+        '<div class="merc-kpi-label">UF/m² promedio</div>'+
+        '<div class="merc-kpi-val">'+fmtNum(data.promUFm2,1)+'</div>'+
+      '</div>'+
+      '<div class="merc-kpi">'+
+        '<div class="merc-kpi-label">Ticket promedio</div>'+
+        '<div class="merc-kpi-val">UF '+fmtNum(data.promTicket,0)+'</div>'+
+      '</div>'+
+      '<div class="merc-kpi">'+
+        '<div class="merc-kpi-label">Velocidad de venta</div>'+
+        '<div class="merc-kpi-val">'+fmtNum(data.promUmes,1)+' <span class="merc-kpi-unit">u/mes</span></div>'+
+      '</div>'+
+      '<div class="merc-kpi">'+
+        '<div class="merc-kpi-label">Superficie prom.</div>'+
+        '<div class="merc-kpi-val">'+fmtNum(data.promSuperficie,1)+' <span class="merc-kpi-unit">m²</span></div>'+
+      '</div>'+
+    '</div>';
+
+  // Lista de proyectos considerados
+  var lista = '<div class="merc-list">'+
+    data.proyectos.map(function(p){
+      var sub = [];
+      if(p.desarrollador) sub.push(p.desarrollador);
+      if(p.uf_m2>0) sub.push(fmtNum(p.uf_m2,1)+' UF/m²');
+      return '<div class="merc-item">'+
+        '<div class="merc-item-main">'+
+          '<div class="merc-item-name">'+(p.nombre||'(sin nombre)')+'</div>'+
+          '<div class="merc-item-sub">'+sub.join(' · ')+'</div>'+
+        '</div>'+
+        '<div class="merc-item-dist">'+p.distance+' m</div>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+
+  return kpis +
+    '<div class="merc-section-label">Proyectos considerados ('+data.count+')</div>'+
+    lista +
+    '<div class="merc-foot">Radio: '+MERCADO_RADIUS+' m · Promedios simples</div>';
+}
+
+// Abre el panel flotante de mercado para el terreno indicado
+function openMercadoPanel(terrenoId){
+  var t = allTerrains.find(function(x){return x._id==terrenoId;});
+  if(!t) return;
+
+  mercadoOpenForId = terrenoId;
+  var panel = document.getElementById('mercado-panel');
+  var content = document.getElementById('mercado-content');
+  if(!panel || !content) return;
+
+  content.innerHTML = renderMercadoPanelContent(t);
+  panel.style.display = 'flex';
+
+  // Pintar los proyectos de mercado en el mapa
+  drawMercadoMarkers(t);
+}
+
+function closeMercadoPanel(){
+  mercadoOpenForId = null;
+  var panel = document.getElementById('mercado-panel');
+  if(panel) panel.style.display = 'none';
+  clearMercadoMarkers();
+  updateMercadoTriggerBtn();
+}
+
+// Toggle desde el botón en el detalle del terreno
+function toggleMercadoPanel(terrenoId){
+  if(mercadoOpenForId === terrenoId){
+    closeMercadoPanel();
+  } else {
+    openMercadoPanel(terrenoId);
+    updateMercadoTriggerBtn();
+  }
+}
+
+// Actualiza estado visual del botón (activo/normal y su texto)
+function updateMercadoTriggerBtn(){
+  var btn = document.getElementById('mercado-trigger-btn');
+  if(!btn) return;
+  var t = allTerrains.find(function(x){return x._id==selectedId;});
+  if(!t) return;
+  var isOpen = mercadoOpenForId == t._id;
+  btn.classList.toggle('active', isOpen);
+  btn.querySelector('.mt-left span:last-child').textContent =
+    isOpen ? 'Ocultar mercado del sector' : 'Ver mercado del sector';
+}
+
+function clearMercadoMarkers(){
+  mercadoMarkers.forEach(function(m){ map.removeLayer(m); });
+  mercadoMarkers = [];
+}
+
+function drawMercadoMarkers(terreno){
+  clearMercadoMarkers();
+  var data = getMercadoSector(terreno);
+  if(!data || !data.proyectos) return;
+
+  var sz = captureMode ? 30 : 22;
+  var fontSz = captureMode ? 14 : 11;
+  var border = captureMode ? 3 : 2;
+
+  data.proyectos.forEach(function(p){
+    var icon = L.divIcon({
+      html:'<div style="background:#C0392B;color:white;width:'+sz+'px;height:'+sz+'px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:'+fontSz+'px;font-weight:600;border:'+border+'px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3)">M</div>',
+      className:'', iconSize:[sz,sz], iconAnchor:[sz/2,sz/2]
+    });
+    var marker = L.marker([p.lat,p.lng],{icon:icon}).addTo(map);
+
+    var tooltipText = p.nombre + ' · ' + p.distance + ' m';
+    if(captureMode){
+      marker.bindTooltip(p.nombre, {direction:'top', offset:[0,-sz/2-2], permanent:true, className:'poi-label-permanent'});
+    } else {
+      marker.bindTooltip(tooltipText, {direction:'top', offset:[0,-8]});
+    }
+    mercadoMarkers.push(marker);
+  });
 }
 
 // HTML de la sección "Equipamiento del entorno" en el detalle
