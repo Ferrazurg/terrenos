@@ -378,6 +378,7 @@
   .poi-btn[data-cat="comercio"].active { background: #B26A00; }
   .poi-btn[data-cat="areas_verdes"].active { background: #1D7A5F; }
   .poi-btn[data-cat="transporte"].active { background: #2D5BE3; }
+  .poi-btn[data-cat="salud"].active { background: #D6336C; }
 
   /* PANEL FLOTANTE DE MERCADO DEL SECTOR (esquina inferior derecha) */
   #mercado-panel {
@@ -731,6 +732,9 @@
       <button class="poi-btn" id="poi-btn-transporte" data-cat="transporte" onclick="togglePOICategory('transporte')">
         <span class="poi-btn-icon">🚇</span><span>Metro</span>
       </button>
+      <button class="poi-btn" id="poi-btn-salud" data-cat="salud" onclick="togglePOICategory('salud')">
+        <span class="poi-btn-icon">🏥</span><span>Salud</span>
+      </button>
     </div>
 
     <!-- PANEL FLOTANTE DE MERCADO DEL SECTOR (esquina inferior derecha) -->
@@ -856,7 +860,8 @@ var POI_MAX_DIBUJADOS = {
   educacion: 3,
   comercio: 5,
   areas_verdes: 3,
-  transporte: 2
+  transporte: 2,
+  salud: 3
 };
 
 // Set de POIs agregados manualmente desde la lista (key: "categoria|nombre|lat|lng")
@@ -919,6 +924,23 @@ var POI_CATEGORIES = [
       'node["station"="subway"]',
       'node["railway"="subway_entrance"]'
     ]
+  },
+  {
+    key: 'salud',
+    label: 'Salud',
+    icon: '🏥',
+    color: '#D6336C',
+    bgColor: '#FCE7F0',
+    // Solo centros de salud relevantes: hospitales, clínicas, CESFAM/centros.
+    // NO se incluyen veterinarias ni consultas médicas particulares sueltas (doctors).
+    queries: [
+      'node["amenity"="hospital"]',
+      'way["amenity"="hospital"]',
+      'node["amenity"="clinic"]',
+      'way["amenity"="clinic"]',
+      'node["healthcare"="centre"]',
+      'way["healthcare"="centre"]'
+    ]
   }
 ];
 
@@ -927,7 +949,7 @@ var poiCache = {};
 // Capa activa de POIs en el mapa
 var poiLayer = null;
 // Categorías visibles en el mapa (toggle)
-var poiVisible = { educacion:false, comercio:false, areas_verdes:false, transporte:false };
+var poiVisible = { educacion:false, comercio:false, areas_verdes:false, transporte:false, salud:false };
 
 function g(t,k){ var v=t[COL[k]]; return (v===undefined||v===null)?'':v; }
 function gn(t,k){ return parseFloat(g(t,k))||0; }
@@ -2486,6 +2508,7 @@ function categorizePOI(tags){
   if(tags.shop==='supermarket' || tags.amenity==='pharmacy' || tags.shop==='mall' || tags.amenity==='marketplace') return 'comercio';
   if(tags.leisure==='park' || tags.leisure==='garden' || tags.landuse==='recreation_ground') return 'areas_verdes';
   if(tags.station==='subway' || tags.railway==='subway_entrance') return 'transporte';
+  if(tags.amenity==='hospital' || tags.amenity==='clinic' || tags.healthcare==='centre') return 'salud';
   return null;
 }
 
@@ -2513,7 +2536,7 @@ function fetchPOIs(terreno, callback){
   })
   .then(function(r){return r.json();})
   .then(function(data){
-    var byCategory = { educacion:[], comercio:[], areas_verdes:[], transporte:[] };
+    var byCategory = { educacion:[], comercio:[], areas_verdes:[], transporte:[], salud:[] };
     if(data.elements){
       data.elements.forEach(function(el){
         var cat = categorizePOI(el.tags);
@@ -2880,7 +2903,7 @@ function renderPOIs(byCategory, error){
 /* ============================================================
    CAPAS DE EQUIPAMIENTO EN EL MAPA
    ============================================================ */
-var poiMarkers = { educacion:[], comercio:[], areas_verdes:[], transporte:[] };
+var poiMarkers = { educacion:[], comercio:[], areas_verdes:[], transporte:[], salud:[] };
 
 function clearPOIMarkersOfCategory(catKey){
   poiMarkers[catKey].forEach(function(m){map.removeLayer(m);});
