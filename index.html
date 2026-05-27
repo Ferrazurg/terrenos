@@ -545,6 +545,21 @@
   #dash-header .dh-title em { font-style: italic; color: var(--accent); font-weight: 400; }
   #dash-header .dh-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
+  /* Chips de filtro Casas/Deptos en el dashboard */
+  #dash-tipo-filters {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .tipo-chip {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+    padding: 6px 14px; border-radius: 14px; cursor: pointer;
+    font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+    transition: all 0.12s;
+  }
+  .tipo-chip:hover { color: var(--text); border-color: var(--border-strong); }
+  .tipo-chip.active {
+    background: var(--accent); border-color: var(--accent); color: var(--surface);
+  }
+
   #dash-body { padding: 24px 28px 40px; max-width: 1400px; margin: 0 auto; width: 100%; }
 
   .dash-section { margin-bottom: 32px; }
@@ -742,7 +757,7 @@
       <div id="mercado-head">
         <div class="mp-title">
           <span class="mp-dot"></span>
-          <span>Mercado del sector</span>
+          <span id="mercado-title-text">Mercado del sector</span>
         </div>
         <button id="mercado-close" onclick="closeMercadoPanel()" title="Cerrar">✕</button>
       </div>
@@ -755,6 +770,11 @@
         <div>
           <div class="dh-title">Dashboard<em>.</em></div>
           <div class="dh-sub" id="dash-scope">— terrenos analizados</div>
+        </div>
+        <div id="dash-tipo-filters">
+          <button class="tipo-chip active" data-tipo="todos" onclick="setTipoFilter('todos')">Todos</button>
+          <button class="tipo-chip" data-tipo="departamento" onclick="setTipoFilter('departamento')">Deptos</button>
+          <button class="tipo-chip" data-tipo="casa" onclick="setTipoFilter('casa')">Casas</button>
         </div>
       </div>
       <div id="dash-body"></div>
@@ -963,12 +983,24 @@ function normalizeResultado(raw){
   return 'analizando';
 }
 
+// Normaliza el tipo de proyecto: 'departamento' o 'casa'.
+// Devuelve null si la celda está vacía/no especificada.
+function normalizeTipo(raw){
+  if(!raw) return null;
+  var s=raw.toString().toLowerCase().trim();
+  if(s==='departamento'||s==='depto'||s==='depto.'||s==='dpto'||s==='dpto.') return 'departamento';
+  if(s==='casa'||s==='casas') return 'casa';
+  return null;
+}
+
 var RESULT_COLOR={positivo:'#1D7A5F',analizando:'#B26A00',rechazado:'#C0392B'};
 
 var allTerrains=[], filtered=[], activeFilter='todos', selectedId=null, markers={}, map;
 var allMercado=[];
-var pinnedId=null; // Terreno fijado: solo se muestra ese en el mapa y sidebar
+var pinnedId=null;
 var dateFrom=null, dateTo=null, activePreset=null;
+// Filtro de tipo SOLO para el dashboard: 'todos', 'departamento' o 'casa'
+var tipoFilter='todos';
 
 /* ============================================================
    MAP INIT
@@ -1032,6 +1064,7 @@ function normalizeMercadoRow(r){
   m.direccion = (r['Direccion']||r['Dirección']||'').toString().trim();
   m.comuna = (r['Comuna']||'').toString().trim();
   m.desarrollador = (r['Desarrollador']||'').toString().trim();
+  m.tipo = normalizeTipo(r['Tipo']);
   m.lat = parseFloat(r['lat'])||null;
   m.lng = parseFloat(r['lng'])||null;
   m.uf_m2 = parseFloat(r['UF/m2 Proyecto'])||0;
@@ -1050,6 +1083,7 @@ function normalizeRow(r){
   r._lat=parseFloat(r.lat)||null; r._lng=parseFloat(r.lng)||null;
   r._id=r[COL.id]||Math.random();
   r._corredor=(g(r,'corredor')||'').toString().trim();
+  r._tipo=normalizeTipo(g(r,'tipo'));
 
   // Calidad de info: evaluar cada ítem
   r._info={};
@@ -1391,14 +1425,21 @@ function buildComparisonHtml(t){
   var comuna = g(t,'comuna');
   if(!comuna) return '<div class="no-data">Sin comuna registrada</div>';
 
-  // Buscar otros terrenos de la misma comuna (incluyendo este)
+  // Si el terreno tiene tipo definido, comparamos solo contra terrenos del mismo tipo
+  // (no tiene sentido comparar UF/m² de casa contra deptos)
   var enComuna = allTerrains.filter(function(x){
-    return g(x,'comuna')===comuna;
+    if(g(x,'comuna')!==comuna) return false;
+    if(t._tipo && x._tipo) return x._tipo===t._tipo;
+    return true; // si alguno no tiene tipo, lo incluimos
   });
+
+  var tipoLabel = '';
+  if(t._tipo==='departamento') tipoLabel = ' (deptos)';
+  else if(t._tipo==='casa') tipoLabel = ' (casas)';
 
   // Si solo está este terreno, no hay con qué comparar
   if(enComuna.length<=1){
-    return '<div class="no-data">Es el único terreno registrado en '+comuna+'. Necesitas al menos 2 para comparar.</div>';
+    return '<div class="no-data">Es el único terreno'+tipoLabel+' registrado en '+comuna+'. Necesitas al menos 2 para comparar.</div>';
   }
 
   // Función para calcular stats de una métrica
@@ -1546,7 +1587,7 @@ function buildComparisonHtml(t){
       '</tbody>'+
     '</table>'+
     spreadWarn+
-    '<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-top:8px">Comparación contra '+(enComuna.length-1)+' otro'+(enComuna.length-1!==1?'s':'')+' terreno'+(enComuna.length-1!==1?'s':'')+' de '+comuna+'</div>';
+    '<div style="font-size:10px;font-family:var(--font-mono);color:var(--text-faint);margin-top:8px">Comparación contra '+(enComuna.length-1)+' otro'+(enComuna.length-1!==1?'s':'')+' terreno'+(enComuna.length-1!==1?'s':'')+' de '+comuna+tipoLabel+'</div>';
 }
 
 function fillDetail(t){
@@ -1584,6 +1625,15 @@ function fillDetail(t){
   var corredorRow = t._corredor
     ? '<div class="info-row"><span class="info-key">Corredor</span><span class="info-val">'+t._corredor+'</span></div>'
     : '';
+
+  var tipoRow;
+  if(t._tipo==='departamento'){
+    tipoRow = '<div class="info-row"><span class="info-key">Tipo</span><span class="info-val">Departamento</span></div>';
+  } else if(t._tipo==='casa'){
+    tipoRow = '<div class="info-row"><span class="info-key">Tipo</span><span class="info-val">Casa</span></div>';
+  } else {
+    tipoRow = '<div class="info-row"><span class="info-key">Tipo</span><span class="info-val" style="color:var(--text-faint);font-style:italic">No especificado</span></div>';
+  }
 
   // Sección de calidad de info
   var infoQualityHtml;
@@ -1634,6 +1684,7 @@ function fillDetail(t){
       '<div class="section-label">Información</div>'+
       '<div class="info-row"><span class="info-key">Dirección</span><span class="info-val">'+g(t,'direccion')+', '+g(t,'comuna')+'</span></div>'+
       '<div class="info-row"><span class="info-key">Resultado</span><span class="info-val"><span class="result-pill pill-'+t._resultado+'">'+t._resultadoOrig+'</span></span></div>'+
+      tipoRow+
       corredorRow+
       '<div class="info-row"><span class="info-key">Fecha ingreso</span><span class="info-val">'+ds+'</span></div>'+
     '</div>'+
@@ -1855,6 +1906,11 @@ function renderDashboard(){
     data = filtered;
   }
 
+  // Aplicar filtro de tipo (Casas/Deptos) si está activo. Solo afecta al dashboard.
+  if(tipoFilter!=='todos'){
+    data = data.filter(function(t){ return t._tipo===tipoFilter; });
+  }
+
   // Actualizar scope en header
   var scopeParts=[];
   scopeParts.push(data.length+' terreno'+(data.length!==1?'s':''));
@@ -1868,6 +1924,9 @@ function renderDashboard(){
   if(activeFilter!=='todos'){
     var filterLabel = activeFilter==='positivo' ? 'aprobado' : activeFilter;
     scopeParts.push('filtro: '+filterLabel);
+  }
+  if(tipoFilter!=='todos'){
+    scopeParts.push('tipo: '+(tipoFilter==='departamento'?'departamentos':'casas'));
   }
   document.getElementById('dash-scope').textContent=scopeParts.join(' · ');
 
@@ -2472,6 +2531,17 @@ function setDashboardFilter(filterValue){
   renderDashboard();
 }
 
+// Cambia el filtro de TIPO del dashboard (Casas/Deptos/Todos). Solo afecta al dashboard.
+function setTipoFilter(tipo){
+  tipoFilter = tipo;
+  // Actualizar UI de los chips de tipo
+  var chips = document.querySelectorAll('#dash-tipo-filters .tipo-chip');
+  chips.forEach(function(c){
+    c.classList.toggle('active', c.getAttribute('data-tipo')===tipo);
+  });
+  renderDashboard();
+}
+
 /* ============================================================
    EQUIPAMIENTO DEL ENTORNO (POIs vía Overpass)
    ============================================================ */
@@ -2642,12 +2712,16 @@ function getMercadoSector(terreno){
   var cercanos = [];
   allMercado.forEach(function(p){
     if(!p.lat || !p.lng) return;
+    // Filtrar por tipo: solo proyectos del mismo tipo que el terreno.
+    // Si el terreno no tiene tipo definido, mostrar todos (mezclado).
+    if(terreno._tipo && p.tipo && terreno._tipo !== p.tipo) return;
     var dist = Math.round(distanceMeters(terreno._lat, terreno._lng, p.lat, p.lng));
     if(dist <= MERCADO_RADIUS){
       cercanos.push({
         nombre: p.nombre,
         direccion: p.direccion,
         desarrollador: p.desarrollador,
+        tipo: p.tipo,
         lat: p.lat,
         lng: p.lng,
         distance: dist,
@@ -2659,7 +2733,7 @@ function getMercadoSector(terreno){
     }
   });
 
-  if(!cercanos.length) return { sinCercanos:true };
+  if(!cercanos.length) return { sinCercanos:true, tipoTerreno: terreno._tipo };
   cercanos.sort(function(a,b){return a.distance-b.distance;});
 
   function promedioDe(getter){
@@ -2689,7 +2763,10 @@ function renderMercadoPanelContent(terreno){
     return '<div class="no-data" style="padding:14px">Aún no hay data de mercado cargada. Agrega proyectos en la pestaña Mercado del Sheet.</div>';
   }
   if(data && data.sinCercanos){
-    return '<div class="no-data" style="padding:14px">No hay proyectos de mercado a menos de '+MERCADO_RADIUS+' m de este terreno.</div>';
+    var msgTipo = '';
+    if(data.tipoTerreno==='departamento') msgTipo = ' de departamentos';
+    else if(data.tipoTerreno==='casa') msgTipo = ' de casas';
+    return '<div class="no-data" style="padding:14px">No hay proyectos'+msgTipo+' a menos de '+MERCADO_RADIUS+' m de este terreno.</div>';
   }
 
   function fmtNum(n, dec){
@@ -2749,6 +2826,15 @@ function openMercadoPanel(terrenoId){
   var panel = document.getElementById('mercado-panel');
   var content = document.getElementById('mercado-content');
   if(!panel || !content) return;
+
+  // Título del panel: agregar tipo si el terreno lo tiene
+  var titleEl = document.getElementById('mercado-title-text');
+  if(titleEl){
+    var titulo = 'Mercado del sector';
+    if(t._tipo==='departamento') titulo += ' · Departamentos';
+    else if(t._tipo==='casa') titulo += ' · Casas';
+    titleEl.textContent = titulo;
+  }
 
   content.innerHTML = renderMercadoPanelContent(t);
   panel.style.display = 'flex';
