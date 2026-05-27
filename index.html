@@ -10,19 +10,102 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
+    /* === PALETA PATAGONLAND === */
+    /* Verde oscuro principal de marca (del logo y backgrounds del PDF) */
+    --pl-deep: #0F4E4A;
+    --pl-deep-dark: #0A3835;     /* hover oscuro */
+    --pl-deep-light: #1A6A65;    /* hover claro */
+    /* Verde menta vibrante (acento, "a explorar") */
+    --pl-mint: #3CCFB1;
+    --pl-mint-soft: #B3EBDD;
+    --pl-mint-bg: #E8F8F3;
+
+    /* Base */
     --bg: #F5F2ED; --surface: #FDFCFA; --border: #E2DDD6; --border-strong: #C8C2B8;
     --text: #1A1814; --text-muted: #7A7468; --text-faint: #ADA89F;
 
-    --green: #1D7A5F; --green-bg: #E3F2EC; --green-soft: #D2EADF;
+    /* Semánticos: el verde se alinea al verde Patagonland */
+    --green: #0F4E4A; --green-bg: #E8F8F3; --green-soft: #C9EFE3;
     --amber: #B26A00; --amber-bg: #FDF0D5; --amber-soft: #F9E5B8;
     --red: #C0392B; --red-bg: #FDE8E4; --red-soft: #F8D5CF;
-    --accent: #2D5BE3; --accent-bg: #EAF0FE; --accent-soft: #D9E2FB;
-    --purple: #6B4FBB; --purple-bg: #EEE9FB;
+
+    /* Accent ahora ES el verde Patagonland */
+    --accent: #0F4E4A; --accent-bg: #E8F8F3; --accent-soft: #C9EFE3;
+
+    /* Púrpura se reemplaza por un teal complementario (era educación) */
+    --purple: #2D7A8C; --purple-bg: #E1F0F4;
 
     --font-sans: 'DM Sans', sans-serif;
     --font-mono: 'DM Mono', monospace;
     --font-serif: 'Fraunces', Georgia, serif;
     --radius: 8px; --radius-lg: 14px;
+  }
+
+  /* ============ SPLASH DE BIENVENIDA ============ */
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--pl-deep);
+    display: flex; align-items: center; justify-content: center;
+    animation: splashFade 1.8s ease 0.6s forwards;
+    pointer-events: none;
+  }
+  .splash-content {
+    text-align: center; color: white;
+    animation: splashContentIn 0.7s ease 0.05s both;
+  }
+  #splash-logo {
+    max-width: 280px; max-height: 80px;
+    margin-bottom: 36px;
+  }
+  #splash-logo-text {
+    display: none;
+    font-family: var(--font-sans); font-size: 28px; font-weight: 500;
+    letter-spacing: 0.12em; color: white; margin-bottom: 36px;
+  }
+  #splash-logo-text .splash-sub {
+    font-size: 11px; font-weight: 400; letter-spacing: 0.4em;
+    margin-top: 4px; opacity: 0.8;
+  }
+  .splash-tagline {
+    font-family: var(--font-serif); font-size: 42px; font-weight: 400;
+    letter-spacing: -0.01em; line-height: 1.1;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .splash-tagline-1 { color: white; font-style: italic; }
+  .splash-tagline-2 {
+    color: var(--pl-mint); font-style: italic;
+    animation: taglineHighlight 0.6s ease 0.5s both;
+  }
+  @keyframes splashFade {
+    0%, 70% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+  }
+  @keyframes splashContentIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes taglineHighlight {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ============ LOGO DEL HEADER (sobre el mapa) ============ */
+  #brand-mark {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 450;
+    pointer-events: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #brand-mark img { max-height: 22px; opacity: 0.85; }
+  #brand-mark-text {
+    display: none;
+    font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+    letter-spacing: 0.2em; color: var(--pl-deep); opacity: 0.7;
+  }
+  /* Ocultar el logo cuando el dashboard o el pin banner están activos */
+  body.dashboard-open #brand-mark,
+  body:has(#pin-banner[style*="display: flex"]) #brand-mark {
+    display: none;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; overflow: hidden; font-family: var(--font-sans); background: var(--bg); color: var(--text); }
@@ -294,9 +377,9 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.15s;
   }
   #dashboard-toggle:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-  #dashboard-toggle.open { background: var(--accent); border-color: var(--accent); color: var(--surface); }
-  #dashboard-toggle.open:hover { background: var(--text); border-color: var(--text); color: var(--surface); }
-  #dashboard-toggle.open .dt-badge { background: var(--surface); color: var(--accent); }
+  #dashboard-toggle.open { background: var(--pl-mint); border-color: var(--pl-mint); color: var(--pl-deep); }
+  #dashboard-toggle.open:hover { background: white; border-color: white; color: var(--pl-deep); }
+  #dashboard-toggle.open .dt-badge { background: var(--pl-deep); color: var(--pl-mint); }
   #dashboard-toggle svg { width: 14px; height: 14px; }
   #dashboard-toggle .dt-badge { background: var(--accent); color: var(--surface); font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
 
@@ -374,7 +457,7 @@
   .poi-btn:hover { background: var(--bg); color: var(--text); }
   .poi-btn.active { color: var(--surface); }
   .poi-btn .poi-btn-icon { font-size: 13px; }
-  .poi-btn[data-cat="educacion"].active { background: #6B4FBB; }
+  .poi-btn[data-cat="educacion"].active { background: #2D7A8C; }
   .poi-btn[data-cat="comercio"].active { background: #B26A00; }
   .poi-btn[data-cat="areas_verdes"].active { background: #1D7A5F; }
   .poi-btn[data-cat="transporte"].active { background: #2D5BE3; }
@@ -537,27 +620,28 @@
   body.dashboard-open #pin-banner { display: none !important; }
 
   #dash-header {
-    position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--border);
-    padding: 16px 160px 16px 28px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: var(--pl-deep); border-bottom: 1px solid var(--pl-deep-dark);
+    padding: 18px 160px 18px 28px; display: flex; align-items: center; justify-content: space-between;
     z-index: 10;
+    color: white;
   }
-  #dash-header .dh-title { font-family: var(--font-serif); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
-  #dash-header .dh-title em { font-style: italic; color: var(--accent); font-weight: 400; }
-  #dash-header .dh-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  #dash-header .dh-title { font-family: var(--font-serif); font-size: 24px; font-weight: 500; letter-spacing: -0.01em; color: white; }
+  #dash-header .dh-title em { font-style: italic; color: var(--pl-mint); font-weight: 400; }
+  #dash-header .dh-sub { font-family: var(--font-mono); font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 4px; }
 
-  /* Chips de filtro Casas/Deptos en el dashboard */
+  /* Chips de filtro Casas/Deptos en el dashboard (sobre fondo verde) */
   #dash-tipo-filters {
     display: flex; gap: 6px; align-items: center;
   }
   .tipo-chip {
-    background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: rgba(255,255,255,0.75);
     padding: 6px 14px; border-radius: 14px; cursor: pointer;
     font-family: var(--font-sans); font-size: 12px; font-weight: 500;
     transition: all 0.12s;
   }
-  .tipo-chip:hover { color: var(--text); border-color: var(--border-strong); }
+  .tipo-chip:hover { color: white; border-color: rgba(255,255,255,0.4); }
   .tipo-chip.active {
-    background: var(--accent); border-color: var(--accent); color: var(--surface);
+    background: var(--pl-mint); border-color: var(--pl-mint); color: var(--pl-deep);
   }
 
   #dash-body { padding: 24px 28px 40px; max-width: 1400px; margin: 0 auto; width: 100%; }
@@ -660,10 +744,31 @@
 </style>
 </head>
 <body>
+
+<!-- SPLASH DE BIENVENIDA: aparece 1.5s al cargar la app -->
+<div id="splash">
+  <div class="splash-content">
+    <img id="splash-logo" src="logo-blanco.png" alt="Patagonland"
+         onerror="this.style.display='none';document.getElementById('splash-logo-text').style.display='block'" />
+    <div id="splash-logo-text">PATAGONLAND<div class="splash-sub">INMOBILIARIA</div></div>
+    <div class="splash-tagline">
+      <span class="splash-tagline-1">Bienvenido</span>
+      <span class="splash-tagline-2">a explorar</span>
+    </div>
+  </div>
+</div>
+
 <div id="app">
   <!-- MAPA DE FONDO (siempre visible) -->
   <div id="map-area">
     <div id="map"></div>
+
+    <!-- MINI LOGO DE MARCA (discreto, esquina superior central del mapa) -->
+    <div id="brand-mark">
+      <img src="logo-oscuro.png" alt="Patagonland"
+           onerror="this.style.display='none';document.getElementById('brand-mark-text').style.display='block'" />
+      <span id="brand-mark-text">PATAGONLAND</span>
+    </div>
 
     <!-- BANDA SUPERIOR: indicador de terreno fijado -->
     <div id="pin-banner">
@@ -896,8 +1001,8 @@ var POI_CATEGORIES = [
     key: 'educacion',
     label: 'Educación',
     icon: '🎓',
-    color: '#6B4FBB',
-    bgColor: '#EEE9FB',
+    color: '#2D7A8C',
+    bgColor: '#E1F0F4',
     // Tags de OpenStreetMap a buscar (solo colegios y universidades)
     queries: [
       'node["amenity"="school"]',
@@ -993,7 +1098,7 @@ function normalizeTipo(raw){
   return null;
 }
 
-var RESULT_COLOR={positivo:'#1D7A5F',analizando:'#B26A00',rechazado:'#C0392B'};
+var RESULT_COLOR={positivo:'#0F4E4A',analizando:'#B26A00',rechazado:'#C0392B'};
 
 var allTerrains=[], filtered=[], activeFilter='todos', selectedId=null, markers={}, map;
 var allMercado=[];
