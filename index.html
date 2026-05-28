@@ -163,6 +163,16 @@
   /* Search flotante */
   #float-search-wrap { padding: 0 4px 0 10px; }
   #float-search-wrap svg { width: 14px; height: 14px; color: var(--text-faint); margin-right: 6px; }
+  /* Botón X para limpiar búsqueda — solo aparece cuando hay texto en el input */
+  #float-search-clear {
+    background: transparent; border: none; padding: 4px 8px;
+    font-size: 11px; color: var(--text-faint); cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    display: none; /* oculto por defecto */
+  }
+  #float-search-clear:hover { background: var(--bg); color: var(--pl-deep); }
+  #float-search-wrap.has-text #float-search-clear { display: block; }
   #float-search { border: none; background: transparent; outline: none; font-family: var(--font-sans); font-size: 13px; padding: 8px 4px; width: 180px; color: var(--text); }
   #float-search::placeholder { color: var(--text-faint); }
 
@@ -441,10 +451,36 @@
     padding: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
     display: none; gap: 4px; align-items: center;
   }
-  #poi-controls .poi-label {
-    font-family: var(--font-mono); font-size: 10px; color: var(--text-faint);
-    letter-spacing: 0.08em; text-transform: uppercase; padding: 0 8px;
+  /* Botón compacto que actúa de toggle (siempre visible) */
+  #poi-toggle-btn {
+    background: transparent; border: none; padding: 6px 12px; border-radius: var(--radius);
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-sans); font-size: 12.5px; font-weight: 500; color: var(--pl-deep);
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  #poi-toggle-btn:hover { background: var(--pl-mint-bg); }
+  #poi-toggle-btn svg { width: 14px; height: 14px; opacity: 0.8; }
+  #poi-toggle-btn.open { background: var(--pl-deep); color: white; }
+  #poi-toggle-btn.open:hover { background: var(--pl-deep-light); }
+  #poi-toggle-arrow {
+    font-size: 9px; opacity: 0.7;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  #poi-toggle-btn.open #poi-toggle-arrow { transform: rotate(90deg); }
+
+  /* Wrapper de categorías (animación de despliegue) */
+  #poi-cats {
+    display: flex; align-items: center; gap: 4px;
+    animation: poiCatsIn 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @keyframes poiCatsIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .poi-divider {
+    width: 1px; height: 22px; background: var(--border); margin: 0 4px;
+  }
+
   .poi-btn {
     background: transparent; border: none; padding: 6px 10px; border-radius: var(--radius);
     cursor: pointer; display: flex; align-items: center; gap: 5px;
@@ -805,6 +841,7 @@
       <div class="mc-wrap" id="float-search-wrap">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
         <input id="float-search" type="text" placeholder="Buscar dirección, comuna…" oninput="onSearchInput()">
+        <button id="float-search-clear" onclick="clearSearch()" title="Limpiar búsqueda">✕</button>
       </div>
       <div class="mc-wrap" id="float-filters">
         <button class="chip active-todos" onclick="setFilter('todos',this)">Todos</button>
@@ -860,22 +897,37 @@
 
     <!-- PANEL FLOTANTE DE CAPAS POI (visible solo cuando hay terreno seleccionado) -->
     <div id="poi-controls">
-      <span class="poi-label">Equipamiento</span>
-      <button class="poi-btn" id="poi-btn-educacion" data-cat="educacion" onclick="togglePOICategory('educacion')">
-        <span class="poi-btn-icon">🎓</span><span>Educación</span>
+      <!-- Botón compacto que actúa de toggle (siempre visible) -->
+      <button id="poi-toggle-btn" onclick="togglePOIPanel()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="2" width="5" height="5" rx="0.5"/>
+          <rect x="9" y="2" width="5" height="5" rx="0.5"/>
+          <rect x="2" y="9" width="5" height="5" rx="0.5"/>
+          <rect x="9" y="9" width="5" height="5" rx="0.5"/>
+        </svg>
+        <span>Equipamiento</span>
+        <span id="poi-toggle-arrow">▸</span>
       </button>
-      <button class="poi-btn" id="poi-btn-comercio" data-cat="comercio" onclick="togglePOICategory('comercio')">
-        <span class="poi-btn-icon">🛒</span><span>Comercio</span>
-      </button>
-      <button class="poi-btn" id="poi-btn-areas_verdes" data-cat="areas_verdes" onclick="togglePOICategory('areas_verdes')">
-        <span class="poi-btn-icon">🌳</span><span>Áreas verdes</span>
-      </button>
-      <button class="poi-btn" id="poi-btn-transporte" data-cat="transporte" onclick="togglePOICategory('transporte')">
-        <span class="poi-btn-icon">🚇</span><span>Metro</span>
-      </button>
-      <button class="poi-btn" id="poi-btn-salud" data-cat="salud" onclick="togglePOICategory('salud')">
-        <span class="poi-btn-icon">🏥</span><span>Salud</span>
-      </button>
+
+      <!-- Wrapper de categorías (se oculta/muestra según poiPanelOpen) -->
+      <div id="poi-cats" style="display:none">
+        <span class="poi-divider"></span>
+        <button class="poi-btn" id="poi-btn-educacion" data-cat="educacion" onclick="togglePOICategory('educacion')">
+          <span class="poi-btn-icon">🎓</span><span>Educación</span>
+        </button>
+        <button class="poi-btn" id="poi-btn-comercio" data-cat="comercio" onclick="togglePOICategory('comercio')">
+          <span class="poi-btn-icon">🛒</span><span>Comercio</span>
+        </button>
+        <button class="poi-btn" id="poi-btn-areas_verdes" data-cat="areas_verdes" onclick="togglePOICategory('areas_verdes')">
+          <span class="poi-btn-icon">🌳</span><span>Áreas verdes</span>
+        </button>
+        <button class="poi-btn" id="poi-btn-transporte" data-cat="transporte" onclick="togglePOICategory('transporte')">
+          <span class="poi-btn-icon">🚇</span><span>Metro</span>
+        </button>
+        <button class="poi-btn" id="poi-btn-salud" data-cat="salud" onclick="togglePOICategory('salud')">
+          <span class="poi-btn-icon">🏥</span><span>Salud</span>
+        </button>
+      </div>
     </div>
 
     <!-- PANEL FLOTANTE DE MERCADO DEL SECTOR (esquina inferior derecha) -->
@@ -1019,6 +1071,10 @@ var POI_MAX_DIBUJADOS = {
 // Set de POIs agregados manualmente desde la lista (key: "categoria|nombre|lat|lng")
 // Estos se dibujan ADEMÁS del top por defecto.
 var poiManualSet = {};
+
+// Estado del panel de equipamiento: cerrado por defecto, pero se recuerda
+// para que al cambiar de terreno el panel reaparezca abierto si lo estaba.
+var poiPanelOpen = false;
 
 // Cache del último byCategory cargado, para que togglePoiManual sepa la lista
 var poiByCategoryCache = null;
@@ -1273,6 +1329,26 @@ function setFilter(f,btn){
 function onSearchInput(){
   applyFilters();
   updateFiltersChipVisibility();
+  updateSearchClearVisibility();
+}
+
+// Limpia el input de búsqueda y refresca los resultados
+function clearSearch(){
+  var input = document.getElementById('float-search');
+  if(!input) return;
+  input.value = '';
+  applyFilters();
+  updateFiltersChipVisibility();
+  updateSearchClearVisibility();
+  input.focus();
+}
+
+// Muestra/oculta el botón X según si hay texto en el input
+function updateSearchClearVisibility(){
+  var input = document.getElementById('float-search');
+  var wrap = document.getElementById('float-search-wrap');
+  if(!input || !wrap) return;
+  wrap.classList.toggle('has-text', input.value.length > 0);
 }
 
 function onDateChange(){
@@ -3291,6 +3367,13 @@ function updatePOIControls(){
   if(!panel) return;
   if(selectedId){
     panel.style.display = 'flex';
+    // Reflejar el estado guardado de "abierto/cerrado" en la UI
+    var cats = document.getElementById('poi-cats');
+    var btn = document.getElementById('poi-toggle-btn');
+    if(cats && btn){
+      cats.style.display = poiPanelOpen ? 'flex' : 'none';
+      btn.classList.toggle('open', poiPanelOpen);
+    }
   } else {
     panel.style.display = 'none';
     // Apagar todas las capas si no hay terreno seleccionado
@@ -3303,6 +3386,15 @@ function updatePOIControls(){
     });
     clearAllPOIMarkers();
   }
+}
+
+// Toggle del panel de equipamiento: abrir/cerrar las categorías
+function togglePOIPanel(){
+  poiPanelOpen = !poiPanelOpen;
+  var cats = document.getElementById('poi-cats');
+  var btn = document.getElementById('poi-toggle-btn');
+  if(cats) cats.style.display = poiPanelOpen ? 'flex' : 'none';
+  if(btn) btn.classList.toggle('open', poiPanelOpen);
 }
 
 /* ============================================================
