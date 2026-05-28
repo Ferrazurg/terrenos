@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terrenos — Análisis de Inversión</title>
+<title>Patagonland · Terrenos</title>
+<link rel="icon" type="image/png" href="logo-oscuro.png">
+<link rel="apple-touch-icon" href="logo-oscuro.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Fraunces:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -48,8 +50,27 @@
     display: flex; align-items: center; justify-content: center;
     animation: splashFade 1.8s ease 0.6s forwards;
     pointer-events: none;
+    overflow: hidden;
+  }
+  /* Capa de la foto (debajo del overlay verde y del contenido) */
+  #splash-photo {
+    position: absolute; inset: 0;
+    background-image: url('splash-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    /* Si la imagen no existe, queda solo el verde del padre (#splash) */
+    z-index: 0;
+  }
+  /* Overlay verde Patagonland encima de la foto.
+     0.72 = visibilidad media (la foto se ve pero el verde domina) */
+  #splash-overlay {
+    position: absolute; inset: 0;
+    background: rgba(15, 78, 74, 0.72);
+    z-index: 1;
   }
   .splash-content {
+    position: relative;
+    z-index: 2;
     text-align: center; color: white;
     animation: splashContentIn 0.7s ease 0.05s both;
   }
@@ -811,6 +832,8 @@
 
 <!-- SPLASH DE BIENVENIDA: aparece 1.5s al cargar la app -->
 <div id="splash">
+  <div id="splash-photo"></div>
+  <div id="splash-overlay"></div>
   <div class="splash-content">
     <img id="splash-logo" src="logo-blanco.png" alt="Patagonland"
          onerror="this.style.display='none';document.getElementById('splash-logo-text').style.display='block'" />
