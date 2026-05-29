@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Patagonland · Terrenos</title>
-<link rel="icon" type="image/png" href="logo-oscuro.png">
-<link rel="apple-touch-icon" href="logo-oscuro.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Fraunces:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -44,70 +44,17 @@
   }
 
   /* ============ SPLASH DE BIENVENIDA ============ */
+  /* Muestra la portada del PDF de credenciales tal cual (imagen completa).
+     Si la imagen no carga, queda un fondo verde Patagonland sólido como fallback. */
   #splash {
     position: fixed; inset: 0; z-index: 9999;
-    background: var(--pl-deep);
-    display: flex; align-items: center; justify-content: center;
-    animation: splashFade 1.8s ease 0.6s forwards;
+    background: var(--pl-deep) url('splash-portada.jpg') center center / cover no-repeat;
+    animation: splashFade 1.8s ease 0.8s forwards;
     pointer-events: none;
-    overflow: hidden;
-  }
-  /* Capa de la foto (debajo del overlay verde y del contenido) */
-  #splash-photo {
-    position: absolute; inset: 0;
-    background-image: url('splash-bg.jpg');
-    background-size: cover;
-    background-position: center;
-    /* Si la imagen no existe, queda solo el verde del padre (#splash) */
-    z-index: 0;
-  }
-  /* Overlay verde Patagonland encima de la foto.
-     0.72 = visibilidad media (la foto se ve pero el verde domina) */
-  #splash-overlay {
-    position: absolute; inset: 0;
-    background: rgba(15, 78, 74, 0.72);
-    z-index: 1;
-  }
-  .splash-content {
-    position: relative;
-    z-index: 2;
-    text-align: center; color: white;
-    animation: splashContentIn 0.7s ease 0.05s both;
-  }
-  #splash-logo {
-    max-width: 280px; max-height: 80px;
-    margin-bottom: 36px;
-  }
-  #splash-logo-text {
-    display: none;
-    font-family: var(--font-sans); font-size: 28px; font-weight: 500;
-    letter-spacing: 0.12em; color: white; margin-bottom: 36px;
-  }
-  #splash-logo-text .splash-sub {
-    font-size: 11px; font-weight: 400; letter-spacing: 0.4em;
-    margin-top: 4px; opacity: 0.8;
-  }
-  .splash-tagline {
-    font-family: var(--font-serif); font-size: 42px; font-weight: 400;
-    letter-spacing: -0.01em; line-height: 1.1;
-    display: flex; flex-direction: column; gap: 4px;
-  }
-  .splash-tagline-1 { color: white; font-style: italic; }
-  .splash-tagline-2 {
-    color: var(--pl-mint); font-style: italic;
-    animation: taglineHighlight 0.6s ease 0.5s both;
   }
   @keyframes splashFade {
     0%, 70% { opacity: 1; }
     100% { opacity: 0; visibility: hidden; }
-  }
-  @keyframes splashContentIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes taglineHighlight {
-    from { opacity: 0; transform: translateX(-12px); }
-    to { opacity: 1; transform: translateX(0); }
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -830,20 +777,8 @@
 </head>
 <body>
 
-<!-- SPLASH DE BIENVENIDA: aparece 1.5s al cargar la app -->
-<div id="splash">
-  <div id="splash-photo"></div>
-  <div id="splash-overlay"></div>
-  <div class="splash-content">
-    <img id="splash-logo" src="logo-blanco.png" alt="Patagonland"
-         onerror="this.style.display='none';document.getElementById('splash-logo-text').style.display='block'" />
-    <div id="splash-logo-text">PATAGONLAND<div class="splash-sub">INMOBILIARIA</div></div>
-    <div class="splash-tagline">
-      <span class="splash-tagline-1">Bienvenido</span>
-      <span class="splash-tagline-2">a explorar</span>
-    </div>
-  </div>
-</div>
+<!-- SPLASH DE BIENVENIDA: muestra la portada del PDF de credenciales (1.5s al cargar) -->
+<div id="splash"></div>
 
 <div id="app">
   <!-- MAPA DE FONDO (siempre visible) -->
