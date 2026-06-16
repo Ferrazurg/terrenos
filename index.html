@@ -44,17 +44,53 @@
   }
 
   /* ============ SPLASH DE BIENVENIDA ============ */
-  /* Muestra la portada del PDF de credenciales tal cual (imagen completa).
-     Si la imagen no carga, queda un fondo verde Patagonland sólido como fallback. */
   #splash {
     position: fixed; inset: 0; z-index: 9999;
-    background: var(--pl-deep) url('splash-portada.png') center center / cover no-repeat;
-    animation: splashFade 1.8s ease 0.8s forwards;
+    background: var(--pl-deep);
+    display: flex; align-items: center; justify-content: center;
+    animation: splashFade 1.8s ease 0.6s forwards;
     pointer-events: none;
+    overflow: hidden;
+  }
+  .splash-content {
+    position: relative;
+    text-align: center; color: white;
+    animation: splashContentIn 0.7s ease 0.05s both;
+  }
+  #splash-logo {
+    max-width: 280px; max-height: 80px;
+    margin-bottom: 36px;
+  }
+  #splash-logo-text {
+    display: none;
+    font-family: var(--font-sans); font-size: 28px; font-weight: 500;
+    letter-spacing: 0.12em; color: white; margin-bottom: 36px;
+  }
+  #splash-logo-text .splash-sub {
+    font-size: 11px; font-weight: 400; letter-spacing: 0.4em;
+    margin-top: 4px; opacity: 0.8;
+  }
+  .splash-tagline {
+    font-family: var(--font-serif); font-size: 42px; font-weight: 400;
+    letter-spacing: -0.01em; line-height: 1.1;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .splash-tagline-1 { color: white; font-style: italic; }
+  .splash-tagline-2 {
+    color: var(--pl-mint); font-style: italic;
+    animation: taglineHighlight 0.6s ease 0.5s both;
   }
   @keyframes splashFade {
     0%, 70% { opacity: 1; }
     100% { opacity: 0; visibility: hidden; }
+  }
+  @keyframes splashContentIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes taglineHighlight {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -777,8 +813,18 @@
 </head>
 <body>
 
-<!-- SPLASH DE BIENVENIDA: muestra la portada del PDF de credenciales (1.5s al cargar) -->
-<div id="splash"></div>
+<!-- SPLASH DE BIENVENIDA: fondo verde Patagonland con logo y tagline animada -->
+<div id="splash">
+  <div class="splash-content">
+    <img id="splash-logo" src="logo-blanco.png" alt="Patagonland"
+         onerror="this.style.display='none';document.getElementById('splash-logo-text').style.display='block'" />
+    <div id="splash-logo-text">PATAGONLAND<div class="splash-sub">INMOBILIARIA</div></div>
+    <div class="splash-tagline">
+      <span class="splash-tagline-1">Bienvenido</span>
+      <span class="splash-tagline-2">a explorar</span>
+    </div>
+  </div>
+</div>
 
 <div id="app">
   <!-- MAPA DE FONDO (siempre visible) -->
@@ -1013,7 +1059,7 @@ var INFO_PESO_TOTAL = INFO_ITEMS.reduce(function(a,x){return a+x.peso;},0);
    Categorías de POIs (puntos de interés) que la app busca alrededor de cada terreno.
    Usa la API de Overpass (OpenStreetMap), gratis y sin API key.
    Modifica POI_RADIUS para cambiar el radio de búsqueda en metros. */
-var POI_RADIUS = 800; // metros
+var POI_RADIUS = 1000; // metros (1 km)
 
 // CONFIGURACIÓN: cuántos POIs máximo se dibujan en el mapa POR DEFECTO por categoría.
 // La lista del sidebar SIEMPRE muestra todos. Estos topes son solo para el mapa.
