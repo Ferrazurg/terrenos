@@ -10,19 +10,36 @@
    ÚNICO cambio necesario en index.html:
      <script src="prc.js"></script>   (justo antes de </body>)
 
-   DATOS: prc-lascondes.geojson en la raíz del repo.
+   DATOS: los .geojson de cada comuna en la raíz del repo (ver PRC_COMUNAS).
+
+   MULTI-COMUNA: el módulo soporta varias comunas a la vez. Cada una puede
+   traer sus normas de dos formas distintas:
+     - "lookup":   la geometría solo trae el código de zona; las normas viven
+                   en una tabla aparte transcrita a mano desde la Ordenanza
+                   (caso Las Condes, ver PRC_NORMAS).
+     - "embebida": cada polígono ya trae sus propias normas como atributos
+                   (caso Lo Barnechea — vienen directo del Sistema de
+                   Información Territorial municipal).
+   La función normasDe() detecta cuál usar según currentComuna.
 
    FUENTES:
-     - Geometría: Geoportal MINVU / IDE Chile (capa PRC Las Condes)
-     - Normas:    Ordenanza PRC Las Condes, Texto Refundido incl. Mod. N°11
-                  (Diario Oficial, octubre 2021), Artículo 38.
+     - Las Condes: Geoportal MINVU/IDE Chile (geometría) + Ordenanza PRC Las
+       Condes, Texto Refundido incl. Mod. N°11 (Diario Oficial, oct. 2021),
+       Artículo 38 (normas, transcritas a mano).
+     - Lo Barnechea: Portal de datos abiertos Municipalidad de Lo Barnechea
+       (SITMLB), capa "Zonificación y Normas Urbanísticas" — normas y
+       geometría vienen juntas, actualización del PRC aprobada oct. 2025.
 
    ============================================================================
    CÓMO AGREGAR OTRA COMUNA MÁS ADELANTE:
-     1. Bajar su GeoJSON del portal MINVU → guardarlo como prc-<comuna>.geojson
-     2. Agregarlo a PRC_FUENTES abajo
-     3. Cargar sus normas de edificación en PRC_NORMAS (cada comuna tiene sus
-        propias siglas; ojo con colisiones — si se repiten, prefijar la comuna)
+     1. Bajar su GeoJSON (ideal: con normas embebidas) → guardarlo en la raíz.
+     2. Agregarlo a PRC_COMUNAS abajo.
+     3. Si sus normas vienen en una tabla aparte (como Las Condes), transcribir
+        a PRC_NORMAS y agregar la rama correspondiente en normasDe().
+        Si vienen embebidas en cada polígono (como Lo Barnechea), escribir un
+        adaptador tipo normasLB() que lea sus propios nombres de campo.
+     4. Agregar su entrada en PRC_META (fuente de geometría/normas para el pie
+        del panel).
    ============================================================================ */
 
 (function(){
@@ -32,9 +49,23 @@
    1. CONFIGURACIÓN
    =========================================================================== */
 
-// Comunas que tienen PRC cargado. Si el terreno no está acá, no se busca zona.
-var PRC_FUENTES = {
-  'Las Condes': 'prc-lascondes.geojson'
+// Comunas que tienen PRC cargado, y el archivo GeoJSON de cada una.
+// Si el terreno no está en esta lista, simplemente no se busca su zona.
+var PRC_COMUNAS = {
+  'Las Condes':    'prc-lascondes.geojson',
+  'Lo Barnechea':  'lobarnechea-zonificacion.geojson'
+};
+
+// Metadata para el pie del panel (fuente de datos, mostrada según la comuna activa)
+var PRC_META = {
+  'Las Condes': {
+    fuenteGeom:   'Geoportal MINVU / IDE Chile',
+    fuenteNormas: 'Ordenanza PRC Las Condes, Texto Refundido incl. Modificación N°11 (oct. 2021)'
+  },
+  'Lo Barnechea': {
+    fuenteGeom:   'Portal de datos abiertos Municipalidad de Lo Barnechea (SITMLB)',
+    fuenteNormas: 'Capa "Zonificación y Normas Urbanísticas", PRC Lo Barnechea vigente (aprobado oct. 2025)'
+  }
 };
 
 // Familias de zona → color en el mapa.
@@ -428,7 +459,8 @@ var PRC_INCENTIVOS = [
   ['Art. 23 · Agrupamiento continuo', 'En E-Aa+cm, E-Aa+ca y E-e1, el CC y COS se incrementan lo suficiente para construir el cuerpo continuo, sin aumentar la altura máxima.']
 ];
 
-/* Estacionamientos mínimos de vivienda (Art. 15) — útil para cabidas */
+/* Estacionamientos mínimos de vivienda (Art. 15) — útil para cabidas.
+   Específico de la Ordenanza de Las Condes; solo se muestra para esa comuna. */
 var PRC_ESTACIONAMIENTOS = [
   ['< 70 m² útiles', '1 por vivienda'],
   ['70 a < 110 m²', '1,5 por vivienda'],
@@ -437,14 +469,114 @@ var PRC_ESTACIONAMIENTOS = [
   ['≥ 180 m²', '3 por vivienda']
 ];
 
+/* ---------------------------------------------------------------------------
+   LO BARNECHEA — normas embebidas en el propio GeoJSON
+   ---------------------------------------------------------------------------
+   Acá cada polígono trae sus normas como atributos (no hay tabla aparte que
+   mantener). Estas funciones solo traducen esos campos a la misma forma
+   {nombre, familia, tablas, notas} que usa el resto del panel, para que
+   renderZona() no tenga que saber de dónde vino cada dato.
+   --------------------------------------------------------------------------- */
+
+// El número en la sigla de zona (ej. "ZHE-6" → 6, "ZHP-4.2" → 4, "ZM-6a" → 6)
+// representa la altura EN PISOS que la zona puede alcanzar con incentivo —
+// es la clasificación que usa la propia Municipalidad. Se usa solo para
+// elegir el color en el mapa, no para las normas mostradas.
+function siglaPisosLB(zona){
+  if(!zona) return null;
+  var partes = zona.split('-');
+  if(partes.length < 2) return null;
+  var m = /^(\d+)/.exec(partes[1]);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function familiaLB(p){
+  var z = (p.zona || '').toString();
+  if(z.indexOf('AVI') === 0 || z.indexOf('AVN') === 0 || z === 'AVEP' || z === 'ZERH') return 'verde';
+  if(z.indexOf('ZIE') === 0 || z.indexOf('ZEE') === 0 || z.indexOf('ZEP') === 0) return 'equipamiento';
+  var pisos = siglaPisosLB(z);
+  if(pisos === null) return 'otro';
+  if(pisos <= 3) return 'baja';
+  if(pisos <= 6) return 'media';
+  return 'alta';
+}
+
+// Deja un valor numérico tal cual (fmtCoef lo formatea después) y uno de
+// texto (ej. "OGUC", "2.1.30 OGUC") tal cual también.
+function limpioLB(v){
+  if(v === null || v === undefined) return null;
+  if(typeof v === 'number') return v;
+  var s = v.toString().trim();
+  return s === '' ? null : s;
+}
+
+// Agrega " m" a campos de texto puramente numéricos (antejardín, distanciamiento…)
+// y deja intacto cualquier otro texto (ej. "OGUC", "N/A").
+function metrosTxtLB(v){
+  var s = limpioLB(v);
+  if(s === null || typeof s === 'number') return s;
+  return /^-?\d+([.,]\d+)?$/.test(s) ? s.replace('.', ',') + ' m' : s;
+}
+
+function predioTxtLB(v){
+  if(typeof v === 'number') return v.toLocaleString('es-CL') + ' m²';
+  return limpioLB(v);
+}
+
+function hayIncentivoLB(p){
+  return (typeof p.coef_cons_inc === 'number' && p.coef_cons_inc > 0) ||
+         (typeof p.alt_inc_pisos === 'number' && p.alt_inc_pisos > 0) ||
+         (typeof p.dens_max_inc  === 'number' && p.dens_max_inc  > 0);
+}
+
+function tablasLB(p){
+  var tablas = [{
+    t:'A', label:'Base',
+    dens: limpioLB(p.dens_max), predio: predioTxtLB(p.sup_predial_min),
+    cc: limpioLB(p.coef_cons), cos: limpioLB(p.coef_ocu),
+    rasante: limpioLB(p.rasante),
+    pisos: typeof p.alt_max_pisos === 'number' ? p.alt_max_pisos : null,
+    metros: limpioLB(p.alt_max_m),
+    antejardin: metrosTxtLB(p.antejardin), dist: metrosTxtLB(p.dist),
+    ados: limpioLB(p.ados), agrup: limpioLB(p.agrup)
+  }];
+  if(hayIncentivoLB(p)){
+    tablas.push({
+      t:'B', label:'Con incentivo',
+      dens: limpioLB(p.dens_max_inc), predio: predioTxtLB(p.sup_predial_min),
+      cc: limpioLB(p.coef_cons_inc), cos: limpioLB(p.coef_ocu_inc),
+      rasante: limpioLB(p.rasante),
+      pisos: (typeof p.alt_inc_pisos === 'number' && p.alt_inc_pisos > 0) ? p.alt_inc_pisos : null,
+      metros: limpioLB(p.alt_inc_m),
+      antejardin: metrosTxtLB(p.antejardin), dist: metrosTxtLB(p.dist),
+      ados: limpioLB(p.ados), agrup: limpioLB(p.agrup),
+      nota:'Sujeto a cumplir las condiciones de incentivo de densificación de la Ordenanza vigente.'
+    });
+  }
+  return tablas;
+}
+
+function normasLB(p){
+  return {
+    nombre: p.n_subzona || p.nombre || p.zona,
+    familia: familiaLB(p),
+    tablas: tablasLB(p),
+    notas: p.notas ? [p.notas] : []
+  };
+}
+
 
 /* ===========================================================================
    2. ESTADO
    =========================================================================== */
 
-var prcData = null;          // GeoJSON crudo
-var prcLayer = null;         // capa Leaflet
-var prcVisible = false;      // capa prendida/apagada
+var prcDataCache = {};       // { comuna: geojson } — cache por comuna, evita recargar
+var prcLayerCache = {};      // { comuna: capa Leaflet } — idem, evita reconstruir
+
+var prcData = null;          // GeoJSON de la comuna ACTIVA (alias sobre prcDataCache)
+var prcLayer = null;         // capa Leaflet de la comuna ACTIVA (alias sobre prcLayerCache)
+var currentComuna = null;    // comuna actualmente activa en el módulo
+var prcVisible = false;      // si la capa está agregada al mapa
 var prcLoading = false;
 var prcSelectedFeature = null;
 var prcFamiliaFiltro = null; // si está seteado, solo se ven zonas de esa familia
@@ -464,17 +596,26 @@ function splitZona(z){
   return {uso:p[0], edif:p[1]};
 }
 
-function normasDe(zona){
-  return PRC_NORMAS[splitZona(zona).edif] || null;
+// Recibe las properties COMPLETAS de un feature (no solo la zona), porque
+// Lo Barnechea necesita todos los campos de norma, no solo el código.
+// Rama según currentComuna: Las Condes usa la tabla PRC_NORMAS (lookup por
+// código de edificación); Lo Barnechea lee las normas directo del feature.
+function normasDe(properties){
+  if(!properties) return null;
+  if(currentComuna === 'Lo Barnechea'){
+    return normasLB(properties);
+  }
+  // Las Condes (y cualquier otra comuna futura por lookup)
+  return PRC_NORMAS[splitZona(properties.zona).edif] || null;
 }
 
-function familiaDe(zona){
-  var n = normasDe(zona);
+function familiaDe(properties){
+  var n = normasDe(properties);
   return (n && n.familia) ? n.familia : 'otro';
 }
 
-function colorDe(zona){
-  var f = PRC_FAMILIAS[familiaDe(zona)];
+function colorDe(properties){
+  var f = PRC_FAMILIAS[familiaDe(properties)];
   return f ? f.color : PRC_FAMILIAS.otro.color;
 }
 
@@ -492,15 +633,16 @@ function fmtAltura(tb){
 
 // Máximos alcanzables de una zona, considerando TODAS sus tablas.
 // Es lo que sirve para comparar potencial entre zonas.
-function maximosDe(zona){
-  var n = normasDe(zona);
+function maximosDe(properties){
+  var n = normasDe(properties);
   if(!n || !n.tablas.length) return null;
   var maxCC = 0, maxPisos = 0, maxMetros = 0, maxDens = 0;
   n.tablas.forEach(function(tb){
-    if(tb.cc && tb.cc > maxCC) maxCC = tb.cc;
-    if(tb.pisos && tb.pisos > maxPisos) maxPisos = tb.pisos;
-    if(tb.metros && tb.metros > maxMetros) maxMetros = tb.metros;
-    var d = parseInt((tb.dens || '').toString().replace(/\./g, ''), 10);
+    if(typeof tb.cc === 'number' && tb.cc > maxCC) maxCC = tb.cc;
+    if(typeof tb.pisos === 'number' && tb.pisos > maxPisos) maxPisos = tb.pisos;
+    if(typeof tb.metros === 'number' && tb.metros > maxMetros) maxMetros = tb.metros;
+    var raw = tb.dens;
+    var d = typeof raw === 'number' ? raw : parseInt((raw || '').toString().replace(/\./g, ''), 10);
     if(!isNaN(d) && d > maxDens) maxDens = d;
   });
   return { cc:maxCC, pisos:maxPisos, metros:maxMetros, dens:maxDens };
@@ -528,11 +670,14 @@ function pointInPolygon(lng, lat, coords){
   return true;
 }
 
-// Busca la feature del PRC que contiene el punto
-function findZonaAt(lat, lng){
-  if(!prcData) return null;
-  for(var i = 0; i < prcData.features.length; i++){
-    var f = prcData.features[i];
+// Busca la feature del PRC que contiene el punto. Por defecto busca en la
+// comuna activa (prcData); se le puede pasar otro dataset explícito (lo usa
+// la ficha del terreno, que consulta SU comuna sin tocar la comuna activa).
+function findZonaAt(lat, lng, dataset){
+  var data = dataset || prcData;
+  if(!data) return null;
+  for(var i = 0; i < data.features.length; i++){
+    var f = data.features[i];
     var g = f.geometry;
     if(g.type === 'Polygon'){
       if(pointInPolygon(lng, lat, g.coordinates)) return f;
@@ -593,6 +738,19 @@ function injectCSS(){
     padding: 11px 14px; border-bottom: 1px solid var(--border); background: var(--bg);
     flex-shrink: 0;
   }
+
+  /* Fila de chips de comuna (solo aparece si hay más de una comuna cargada) */
+  #prc-comuna-row {
+    display: none; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border);
+    background: var(--surface); flex-wrap: wrap; flex-shrink: 0;
+  }
+  .prc-comuna-chip {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 4px 11px; font-family: var(--font-sans); font-size: 11px; color: var(--text-muted);
+    cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+  .prc-comuna-chip:hover { border-color: var(--pl-deep); color: var(--pl-deep); }
+  .prc-comuna-chip.active { background: var(--pl-deep); border-color: var(--pl-deep); color: #fff; }
   .prc-head-title {
     display: flex; align-items: center; gap: 8px;
     font-family: var(--font-serif); font-size: 14px; font-weight: 500; color: var(--text);
@@ -802,6 +960,7 @@ function buildUI(){
         '<button class="prc-icon-btn" id="prc-close" title="Cerrar">✕</button>' +
       '</div>' +
     '</div>' +
+    '<div id="prc-comuna-row"></div>' +
     '<div id="prc-body"></div>';
   var area = document.getElementById('map-area') || document.body;
   area.appendChild(panel);
@@ -815,6 +974,27 @@ function buildUI(){
   document.getElementById('prc-tab-rank').addEventListener('click', function(){
     prcView = 'ranking'; renderPanel();
   });
+
+  // Delegado: click en cualquier chip de comuna cambia la comuna activa
+  document.getElementById('prc-comuna-row').addEventListener('click', function(e){
+    var btn = e.target.closest ? e.target.closest('.prc-comuna-chip') : null;
+    if(!btn) return;
+    var comuna = btn.getAttribute('data-comuna');
+    if(comuna) switchComuna(comuna, { show:true, view:'legend' });
+  });
+}
+
+// Pinta la fila de chips de comuna (oculta si solo hay una comuna cargada)
+function renderComunaChips(){
+  var row = document.getElementById('prc-comuna-row');
+  if(!row) return;
+  var keys = Object.keys(PRC_COMUNAS);
+  if(keys.length < 2){ row.style.display = 'none'; row.innerHTML = ''; return; }
+  row.style.display = 'flex';
+  row.innerHTML = keys.map(function(k){
+    var active = k === currentComuna;
+    return '<button class="prc-comuna-chip' + (active ? ' active' : '') + '" data-comuna="' + esc(k) + '">' + esc(k) + '</button>';
+  }).join('');
 }
 
 function openPanel(){
@@ -845,25 +1025,28 @@ function setBtnState(){
    6. CARGA DE DATOS
    =========================================================================== */
 
-function loadPRC(callback){
-  if(prcData){ callback(null, prcData); return; }
-  if(prcLoading){ return; }
+// Carga (y cachea) el GeoJSON de UNA comuna específica. No toca cuál es la
+// comuna "activa" del módulo — eso lo decide quien llama, con setActiveComuna().
+function loadPRC(comuna, callback){
+  if(!PRC_COMUNAS[comuna]){ callback(new Error('Comuna sin PRC: ' + comuna), null); return; }
+  if(prcDataCache[comuna]){ callback(null, prcDataCache[comuna]); return; }
+
   prcLoading = true;
   setBtnState();
 
-  fetch(PRC_FUENTES['Las Condes'])
+  fetch(PRC_COMUNAS[comuna])
     .then(function(r){
       if(!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
     .then(function(json){
-      prcData = json;
+      prcDataCache[comuna] = json;
       prcLoading = false;
       setBtnState();
       callback(null, json);
     })
     .catch(function(err){
-      console.error('PRC: error al cargar el GeoJSON', err);
+      console.error('PRC: error al cargar el GeoJSON de ' + comuna, err);
       prcLoading = false;
       setBtnState();
       callback(err, null);
@@ -876,34 +1059,90 @@ function loadPRC(callback){
    =========================================================================== */
 
 function styleFor(feature){
-  var z = feature.properties.zona;
-  var fam = familiaDe(z);
+  var fam = familiaDe(feature.properties);
   var visible = !prcFamiliaFiltro || prcFamiliaFiltro === fam;
   return {
-    color: colorDe(z),
+    color: colorDe(feature.properties),
     weight: visible ? 1 : 0,
     opacity: visible ? 0.85 : 0,
-    fillColor: colorDe(z),
+    fillColor: colorDe(feature.properties),
     fillOpacity: visible ? 0.32 : 0
   };
 }
 
-function buildLayer(){
-  if(prcLayer) return;
-  prcLayer = L.geoJSON(prcData, {
+// Construye (o devuelve de cache) la capa Leaflet de una comuna. IMPORTANTE:
+// arma la capa con currentComuna apuntando a esa comuna, para que styleFor/
+// normasDe clasifiquen bien cada polígono durante la construcción.
+function buildLayerFor(comuna){
+  if(prcLayerCache[comuna]) return prcLayerCache[comuna];
+  var data = prcDataCache[comuna];
+  if(!data) return null;
+
+  var comunaPrevia = currentComuna;
+  currentComuna = comuna; // contexto correcto mientras se construye
+  var layer = L.geoJSON(data, {
     renderer: L.canvas({ padding: 0.5 }),
     style: styleFor,
-    onEachFeature: function(feature, layer){
-      layer.on('click', function(e){
+    onEachFeature: function(feature, lyr){
+      lyr.on('click', function(e){
         L.DomEvent.stopPropagation(e);
-        selectZona(feature, layer);
+        selectZona(feature);
       });
-      var sp = splitZona(feature.properties.zona);
-      var n = normasDe(feature.properties.zona);
-      layer.bindTooltip(
+      var n = normasDe(feature.properties);
+      lyr.bindTooltip(
         feature.properties.zona + (n ? ' · ' + n.nombre : ''),
         { sticky:true, direction:'top', className:'prc-tip' }
       );
+    }
+  });
+  currentComuna = comunaPrevia;
+
+  prcLayerCache[comuna] = layer;
+  return layer;
+}
+
+// Cambia el "contexto" del módulo a otra comuna: oculta la capa anterior del
+// mapa si estaba puesta, actualiza los alias prcData/prcLayer y limpia
+// selección/filtros. NO toca prcVisible ni agrega nada al mapa por sí sola.
+function setActiveComuna(comuna){
+  if(currentComuna === comuna) return;
+  if(prcLayer && prcVisible && map.hasLayer(prcLayer)) map.removeLayer(prcLayer);
+  clearHighlight();
+  currentComuna = comuna;
+  prcData = prcDataCache[comuna] || null;
+  prcLayer = prcLayerCache[comuna] || null;
+  prcFamiliaFiltro = null;
+  prcSelectedFeature = null;
+}
+
+// Agrega al mapa la capa de la comuna ACTUALMENTE activa (construyéndola si falta).
+function showActiveLayerOnMap(){
+  if(!prcLayer) prcLayer = buildLayerFor(currentComuna);
+  if(!prcLayer) return;
+  if(!map.hasLayer(prcLayer)){
+    prcLayer.addTo(map);
+    if(prcLayer.bringToBack) prcLayer.bringToBack();
+  }
+  prcVisible = true;
+  setBtnState();
+}
+
+// Punto central para cambiar de comuna (selector manual, chips, buscador,
+// auto-switch al seleccionar un terreno). Carga los datos si hace falta,
+// cambia el contexto activo y opcionalmente muestra la capa / repinta el panel.
+function switchComuna(comuna, opts){
+  opts = opts || {};
+  if(!PRC_COMUNAS[comuna]) return;
+  loadPRC(comuna, function(err){
+    if(err) return;
+    setActiveComuna(comuna);
+    if(!prcLayer) prcLayer = buildLayerFor(comuna);
+    if(opts.show) showActiveLayerOnMap();
+    if(opts.render !== false){
+      prcView = opts.view || 'legend';
+      renderComunaChips();
+      renderPanel();
+      if(opts.open) openPanel();
     }
   });
 }
@@ -918,22 +1157,11 @@ function togglePRC(){
     setBtnState();
     return;
   }
-  // Prender
-  loadPRC(function(err){
-    if(err){
-      alert('No se pudo cargar el PRC. Revisa que prc-lascondes.geojson esté en la raíz del repo.');
-      return;
-    }
-    buildLayer();
-    prcLayer.addTo(map);
-    // Los terrenos deben quedar por sobre los polígonos
-    if(prcLayer.bringToBack) prcLayer.bringToBack();
-    prcVisible = true;
-    setBtnState();
-    prcView = 'legend';
-    renderPanel();
-    openPanel();
-  });
+  // Prender: si ya hay una comuna "activa" (por ejemplo, porque el usuario
+  // venía mirando un terreno de esa comuna), se abre directo ahí. Si no,
+  // parte con la primera comuna disponible.
+  var objetivo = (currentComuna && PRC_COMUNAS[currentComuna]) ? currentComuna : Object.keys(PRC_COMUNAS)[0];
+  switchComuna(objetivo, { show:true, view:'legend', open:true });
 }
 
 function clearHighlight(){
@@ -945,12 +1173,12 @@ function highlightFeature(feature){
   prcHighlight = L.geoJSON(feature, {
     style: {
       color: '#1A1814', weight: 2.5, opacity: 1,
-      fillColor: colorDe(feature.properties.zona), fillOpacity: 0.5
+      fillColor: colorDe(feature.properties), fillOpacity: 0.5
     }
   }).addTo(map);
 }
 
-function selectZona(feature, layer){
+function selectZona(feature){
   prcSelectedFeature = feature;
   prcView = 'zona';
   highlightFeature(feature);
@@ -971,14 +1199,20 @@ function renderPanel(){
 
   document.getElementById('prc-tab-legend').classList.toggle('on', prcView === 'legend');
   document.getElementById('prc-tab-rank').classList.toggle('on', prcView === 'ranking');
+  renderComunaChips();
+
+  if(!prcData){
+    body.innerHTML = '<div class="no-data">Sin datos cargados.</div>';
+    return;
+  }
 
   if(prcView === 'legend'){
-    headText.textContent = 'Plan Regulador · Las Condes';
+    headText.textContent = 'Plan Regulador · ' + (currentComuna || '');
     headDot.style.background = 'var(--pl-deep)';
     body.innerHTML = renderLegend();
     wireLegend();
   } else if(prcView === 'ranking'){
-    headText.textContent = 'Potencial por zona';
+    headText.textContent = 'Potencial por zona · ' + (currentComuna || '');
     headDot.style.background = 'var(--pl-deep)';
     body.innerHTML = renderRanking();
     wireRanking();
@@ -988,7 +1222,7 @@ function renderPanel(){
       return renderPanel();
     }
     headText.textContent = 'Zona seleccionada';
-    headDot.style.background = colorDe(prcSelectedFeature.properties.zona);
+    headDot.style.background = colorDe(prcSelectedFeature.properties);
     body.innerHTML = renderZona(prcSelectedFeature);
     wireZona();
   }
@@ -998,9 +1232,11 @@ function renderPanel(){
 /* --- Vista: leyenda + filtros --- */
 function renderLegend(){
   var counts = {};
+  var zonasUnicas = {};
   prcData.features.forEach(function(f){
-    var fam = familiaDe(f.properties.zona);
+    var fam = familiaDe(f.properties);
     counts[fam] = (counts[fam] || 0) + 1;
+    zonasUnicas[f.properties.zona] = true;
   });
 
   var keys = Object.keys(PRC_FAMILIAS).sort(function(a,b){
@@ -1017,6 +1253,7 @@ function renderLegend(){
     '</div>';
   }).join('');
 
+  var meta = PRC_META[currentComuna] || {};
   return '<div style="font-size:12px;color:var(--text-muted);line-height:1.55;margin-bottom:12px">' +
       'Click en cualquier zona del mapa para ver sus normas urbanísticas. ' +
       'Click en una familia para aislarla.' +
@@ -1027,9 +1264,9 @@ function renderLegend(){
       : '') +
     '<div class="prc-foot">' +
       prcData.features.length + ' polígonos · ' +
-      Object.keys(PRC_NORMAS).length + ' zonas de edificación normadas<br>' +
-      'Geometría: Geoportal MINVU / IDE Chile<br>' +
-      'Normas: Ordenanza PRC Las Condes, Texto Refundido incl. Modificación N°11 (oct. 2021)' +
+      Object.keys(zonasUnicas).length + ' zonas normadas<br>' +
+      'Geometría: ' + esc(meta.fuenteGeom || '—') + '<br>' +
+      'Normas: ' + esc(meta.fuenteNormas || '—') +
     '</div>';
 }
 
@@ -1050,24 +1287,27 @@ function wireLegend(){
   });
 }
 
-/* --- Vista: ranking de zonas por potencial --- */
+/* --- Vista: ranking de zonas por potencial ---
+   Agrupa directo por código de zona (funciona igual para comunas con tabla
+   de normas aparte o con normas embebidas: en ambos casos guardamos una
+   feature representativa de cada zona, que es lo que necesita normasDe(). */
 function renderRanking(){
-  // Zonas de edificación presentes en la data, con su superficie total
   var presentes = {};
   prcData.features.forEach(function(f){
-    var edif = splitZona(f.properties.zona).edif;
-    if(!presentes[edif]) presentes[edif] = { edif:edif, n:0 };
-    presentes[edif].n++;
+    var zona = f.properties.zona;
+    if(!presentes[zona]) presentes[zona] = { zona:zona, n:0, props:f.properties };
+    presentes[zona].n++;
   });
 
-  var filas = Object.keys(presentes).map(function(edif){
-    var n = PRC_NORMAS[edif];
-    var m = n && n.tablas.length ? maximosDe(edif) : null;
+  var filas = Object.keys(presentes).map(function(zona){
+    var rep = presentes[zona];
+    var n = normasDe(rep.props);
+    var m = n && n.tablas.length ? maximosDe(rep.props) : null;
     return {
-      edif: edif,
+      zona: zona,
       nombre: n ? n.nombre : 'Sin normas cargadas',
       familia: n ? n.familia : 'otro',
-      n: presentes[edif].n,
+      n: rep.n,
       cc: m ? m.cc : 0,
       pisos: m ? m.pisos : 0,
       dens: m ? m.dens : 0
@@ -1080,10 +1320,10 @@ function renderRanking(){
   });
 
   var rows = filas.map(function(r){
-    return '<tr data-edif="' + r.edif + '">' +
+    return '<tr data-zona="' + esc(r.zona) + '">' +
       '<td>' +
         '<span class="prc-rank-dot" style="background:' + PRC_FAMILIAS[r.familia].color + '"></span>' +
-        '<span class="prc-rank-code">' + r.edif + '</span>' +
+        '<span class="prc-rank-code">' + esc(r.zona) + '</span>' +
         '<div style="font-size:9.5px;color:var(--text-faint);margin-top:2px;padding-left:14px">' + r.n + ' polígono' + (r.n !== 1 ? 's' : '') + '</div>' +
       '</td>' +
       '<td class="num"><strong style="font-family:var(--font-serif);font-size:14px;color:var(--pl-deep)">' + fmtCoef(r.cc) + '</strong></td>' +
@@ -1093,16 +1333,16 @@ function renderRanking(){
   }).join('');
 
   return '<div style="font-size:12px;color:var(--text-muted);line-height:1.55;margin-bottom:12px">' +
-      'Máximos alcanzables por zona de edificación, considerando las tablas de densificación ' +
-      '(no la Tabla Base). Ordenado por constructibilidad.' +
+      'Máximos alcanzables por zona, considerando la tabla de densificación / incentivo ' +
+      '(no la tabla base). Ordenado por constructibilidad.' +
     '</div>' +
     '<table class="prc-rank-table">' +
       '<thead><tr><th>Zona</th><th class="num">CC máx</th><th class="num">Pisos</th><th class="num">hab/ha</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table>' +
     '<div class="prc-foot">' +
-      'Las tablas de densificación solo aplican si el proyecto cumple las condiciones del Capítulo V ' +
-      '(área libre, antejardines, cableado subterráneo, accesibilidad, tamaño predial, etc.).<br>' +
+      'Las normas superiores a la tabla base solo aplican si el proyecto cumple las condiciones ' +
+      'que exige la Ordenanza (área libre, antejardines, tamaño predial, etc.).<br>' +
       'Click en una fila para aislar esa zona en el mapa.' +
     '</div>';
 }
@@ -1110,24 +1350,22 @@ function renderRanking(){
 function wireRanking(){
   document.querySelectorAll('.prc-rank-table tbody tr').forEach(function(tr){
     tr.addEventListener('click', function(){
-      var edif = tr.getAttribute('data-edif');
-      // Aislar en el mapa las zonas con esa edificación
+      var zona = tr.getAttribute('data-zona');
       if(prcLayer){
         prcLayer.setStyle(function(f){
-          var match = splitZona(f.properties.zona).edif === edif;
+          var match = f.properties.zona === zona;
           return {
-            color: colorDe(f.properties.zona),
+            color: colorDe(f.properties),
             weight: match ? 1.5 : 0,
             opacity: match ? 1 : 0,
-            fillColor: colorDe(f.properties.zona),
+            fillColor: colorDe(f.properties),
             fillOpacity: match ? 0.5 : 0
           };
         });
       }
-      // Zoom al conjunto
       var bounds = null;
       prcLayer.eachLayer(function(l){
-        if(splitZona(l.feature.properties.zona).edif === edif){
+        if(l.feature.properties.zona === zona){
           bounds = bounds ? bounds.extend(l.getBounds()) : l.getBounds();
         }
       });
@@ -1140,9 +1378,9 @@ function wireRanking(){
 function renderZona(feature){
   var p = feature.properties;
   var sp = splitZona(p.zona);
-  var n = normasDe(p.zona);
-  var fam = PRC_FAMILIAS[familiaDe(p.zona)];
-  var m = n ? maximosDe(p.zona) : null;
+  var n = normasDe(p);
+  var fam = PRC_FAMILIAS[familiaDe(p)];
+  var m = n ? maximosDe(p) : null;
 
   var html = '';
 
@@ -1215,29 +1453,32 @@ function renderZona(feature){
     html += '<div style="font-size:12px;color:var(--text-faint);font-style:italic">Sin detalle de usos en la capa.</div>';
   }
 
-  // Incentivos generales
-  html += '<div class="prc-section-lbl">Incentivos generales (Cap. IV)</div>';
-  html += '<div class="prc-tabla"><div class="prc-tabla-head">' +
-      '<span class="prc-tabla-tag base">+</span>' +
-      '<span class="prc-tabla-label">Incrementos de norma aplicables</span>' +
-      '<span class="prc-tabla-arrow">▶</span>' +
-    '</div><div class="prc-tabla-body">' +
-      PRC_INCENTIVOS.map(function(x){
-        return '<div style="padding:7px 0;border-bottom:1px solid var(--border)">' +
-          '<div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);margin-bottom:3px">' + esc(x[0]) + '</div>' +
-          '<div style="font-size:11.5px;line-height:1.5;color:var(--text-muted)">' + esc(x[1]) + '</div>' +
-        '</div>';
-      }).join('') +
-    '</div></div>';
+  // Incentivos generales y estacionamientos: son artículos específicos de la
+  // Ordenanza de Las Condes (Cap. IV y Art. 15) — solo se muestran ahí, para
+  // no citar un artículo que no corresponde a la ordenanza de otra comuna.
+  if(currentComuna === 'Las Condes'){
+    html += '<div class="prc-section-lbl">Incentivos generales (Cap. IV)</div>';
+    html += '<div class="prc-tabla"><div class="prc-tabla-head">' +
+        '<span class="prc-tabla-tag base">+</span>' +
+        '<span class="prc-tabla-label">Incrementos de norma aplicables</span>' +
+        '<span class="prc-tabla-arrow">▶</span>' +
+      '</div><div class="prc-tabla-body">' +
+        PRC_INCENTIVOS.map(function(x){
+          return '<div style="padding:7px 0;border-bottom:1px solid var(--border)">' +
+            '<div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);margin-bottom:3px">' + esc(x[0]) + '</div>' +
+            '<div style="font-size:11.5px;line-height:1.5;color:var(--text-muted)">' + esc(x[1]) + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div></div>';
 
-  // Estacionamientos
-  html += '<div class="prc-tabla"><div class="prc-tabla-head">' +
-      '<span class="prc-tabla-tag base">P</span>' +
-      '<span class="prc-tabla-label">Estacionamientos mínimos · vivienda (Art. 15)</span>' +
-      '<span class="prc-tabla-arrow">▶</span>' +
-    '</div><div class="prc-tabla-body">' +
-      PRC_ESTACIONAMIENTOS.map(function(x){ return fila(x[0], x[1]); }).join('') +
-    '</div></div>';
+    html += '<div class="prc-tabla"><div class="prc-tabla-head">' +
+        '<span class="prc-tabla-tag base">P</span>' +
+        '<span class="prc-tabla-label">Estacionamientos mínimos · vivienda (Art. 15)</span>' +
+        '<span class="prc-tabla-arrow">▶</span>' +
+      '</div><div class="prc-tabla-body">' +
+        PRC_ESTACIONAMIENTOS.map(function(x){ return fila(x[0], x[1]); }).join('') +
+      '</div></div>';
+  }
 
   html += '<div class="prc-foot">' +
     'Referencial. Verificar siempre contra la Ordenanza vigente y el certificado de informaciones previas de la DOM.' +
@@ -1264,7 +1505,39 @@ function wireZona(){
 
 
 /* ===========================================================================
-   9. INTEGRACIÓN CON EL DETALLE DEL TERRENO
+   9. INTEGRACIÓN CON EL BUSCADOR EXISTENTE
+   ---------------------------------------------------------------------------
+   Reusa el mismo input de búsqueda (#float-search) que ya filtra terrenos:
+   si el PRC está activo y lo que se escribe empieza a coincidir con el
+   nombre de una comuna cargada, cambia la capa a esa comuna. No agrega
+   ningún selector nuevo a la página.
+   =========================================================================== */
+
+function normalizarTxt(s){
+  return (s || '').toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quita tildes/ñ→n
+    .trim();
+}
+
+function intentarCambiarComunaPorBusqueda(){
+  if(!prcVisible) return; // solo relevante si el usuario ya está mirando el PRC
+  var input = document.getElementById('float-search');
+  if(!input) return;
+  var q = normalizarTxt(input.value);
+  if(q.length < 3) return;
+
+  var match = Object.keys(PRC_COMUNAS).find(function(k){
+    var kn = normalizarTxt(k);
+    return kn === q || kn.indexOf(q) === 0;
+  });
+  if(match && match !== currentComuna){
+    switchComuna(match, { show:true });
+  }
+}
+
+
+/* ===========================================================================
+   10. INTEGRACIÓN CON EL DETALLE DEL TERRENO
    =========================================================================== */
 
 function injectTerrenoSection(t){
@@ -1272,7 +1545,7 @@ function injectTerrenoSection(t){
   if(!cont || !t) return;
 
   var comuna = (typeof g === 'function') ? g(t, 'comuna') : '';
-  if(!PRC_FUENTES[comuna]) return;          // comuna sin PRC cargado
+  if(!PRC_COMUNAS[comuna]) return;          // comuna sin PRC cargado
   if(!t._lat || !t._lng) return;
 
   var wrap = document.createElement('div');
@@ -1290,7 +1563,7 @@ function injectTerrenoSection(t){
   cont.appendChild(wrap);
 
   var terrenoId = t._id;
-  loadPRC(function(err){
+  loadPRC(comuna, function(err){
     // Si el usuario ya cambió de terreno, no pisar el DOM
     if(selectedId !== terrenoId) return;
     var box = document.getElementById('prc-terr-content');
@@ -1300,22 +1573,34 @@ function injectTerrenoSection(t){
       box.innerHTML = '<div class="no-data">No se pudo cargar la capa del PRC.</div>';
       return;
     }
-    var f = findZonaAt(t._lat, t._lng);
+
+    // El módulo "sigue" al terreno: la comuna activa pasa a ser la suya.
+    // Si el panel grande ya estaba visible, además se cambia la capa en el
+    // mapa; si no, solo se actualiza el contexto (sin prender nada solo).
+    setActiveComuna(comuna);
+    if(prcVisible) showActiveLayerOnMap();
+
+    var f = findZonaAt(t._lat, t._lng, prcDataCache[comuna]);
     if(!f){
       box.innerHTML = '<div class="no-data">El punto no cae dentro de ninguna zona del PRC de ' + esc(comuna) + '. Revisa las coordenadas.</div>';
       return;
     }
     box.innerHTML = renderTerrenoCard(f, t);
+
+    // Si el panel grande está abierto, refrescarlo para que muestre la comuna correcta
+    var panelEl = document.getElementById('prc-panel');
+    if(panelEl && panelEl.classList.contains('open')){
+      if(prcView === 'zona') prcView = 'legend';
+      renderPanel();
+    }
+
     var btn = document.getElementById('prc-terr-open');
     if(btn){
       btn.addEventListener('click', function(){
-        if(!prcVisible){
-          buildLayer();
-          prcLayer.addTo(map);
-          if(prcLayer.bringToBack) prcLayer.bringToBack();
-          prcVisible = true;
-          setBtnState();
-        }
+        // La comuna ya está cargada (venimos de acá mismo), así que este
+        // switch es síncrono; selectZona() de inmediato después ya pinta
+        // la vista de "zona" y abre el panel.
+        switchComuna(comuna, { show:true });
         selectZona(f);
       });
     }
@@ -1324,9 +1609,9 @@ function injectTerrenoSection(t){
 
 function renderTerrenoCard(f, t){
   var p = f.properties;
-  var n = normasDe(p.zona);
-  var m = n ? maximosDe(p.zona) : null;
-  var fam = PRC_FAMILIAS[familiaDe(p.zona)];
+  var n = normasDe(p);
+  var m = n ? maximosDe(p) : null;
+  var fam = PRC_FAMILIAS[familiaDe(p)];
 
   // Cabida gruesa: m² del terreno × CC máx
   var cabida = (m && m.cc && t._m2) ? Math.round(t._m2 * m.cc) : null;
@@ -1363,7 +1648,7 @@ function renderTerrenoCard(f, t){
 
 
 /* ===========================================================================
-   10. ARRANQUE
+   11. ARRANQUE
    =========================================================================== */
 
 function init(){
@@ -1394,12 +1679,26 @@ function init(){
     };
   }
 
+  // Reusar el buscador existente: si el PRC está activo, escribir el nombre
+  // de una comuna cargada cambia la capa (sin agregar ningún selector nuevo)
+  if(typeof window.onSearchInput === 'function'){
+    var origOnSearchInput = window.onSearchInput;
+    window.onSearchInput = function(){
+      origOnSearchInput.apply(this, arguments);
+      try { intentarCambiarComunaPorBusqueda(); }
+      catch(e){ console.error('PRC: error en búsqueda de comuna', e); }
+    };
+  }
+
   // Exponer por si se necesita desde consola
   window.PRC = {
     data: function(){ return prcData; },
+    dataDe: function(comuna){ return prcDataCache[comuna]; },
     findZonaAt: findZonaAt,
     normas: PRC_NORMAS,
-    toggle: togglePRC
+    comunas: PRC_COMUNAS,
+    toggle: togglePRC,
+    switchComuna: switchComuna
   };
 }
 
