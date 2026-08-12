@@ -53,7 +53,12 @@
 // Si el terreno no está en esta lista, simplemente no se busca su zona.
 var PRC_COMUNAS = {
   'Las Condes':    'prc-lascondes.geojson',
-  'Lo Barnechea':  'lobarnechea-zonificacion.geojson'
+  'Lo Barnechea':  'lobarnechea-zonificacion.geojson',
+  'La Florida':    'prc-laflorida.geojson',
+  'Colina':        'prc-colina.geojson',
+  'Huechuraba':    'prc-huechuraba.geojson',
+  'Providencia':   'prc-providencia.geojson',
+  'Vitacura':      'prc-vitacura.geojson'
 };
 
 // Metadata para el pie del panel (fuente de datos, mostrada según la comuna activa)
@@ -65,6 +70,26 @@ var PRC_META = {
   'Lo Barnechea': {
     fuenteGeom:   'Portal de datos abiertos Municipalidad de Lo Barnechea (SITMLB)',
     fuenteNormas: 'Capa "Zonificación y Normas Urbanísticas", PRC Lo Barnechea vigente (aprobado oct. 2025)'
+  },
+  'La Florida': {
+    fuenteGeom:   'Geoportal MINVU / IDE Chile',
+    fuenteNormas: 'Aún no transcritas — solo geometría y usos de suelo por ahora'
+  },
+  'Colina': {
+    fuenteGeom:   'Geoportal MINVU / IDE Chile',
+    fuenteNormas: 'Aún no transcritas — solo geometría y usos de suelo por ahora'
+  },
+  'Huechuraba': {
+    fuenteGeom:   'Geoportal MINVU / IDE Chile',
+    fuenteNormas: 'Aún no transcritas — solo geometría y usos de suelo por ahora'
+  },
+  'Providencia': {
+    fuenteGeom:   'Geoportal MINVU / IDE Chile',
+    fuenteNormas: 'Ordenanza Local Refundida PRCP 2007, incl. Modificación N°7 Barrio El Aguilucho (D.O. 29-05-2025)'
+  },
+  'Vitacura': {
+    fuenteGeom:   'Geoportal MINVU / IDE Chile',
+    fuenteNormas: 'Aún no transcritas — solo geometría y usos de suelo por ahora'
   }
 };
 
@@ -470,6 +495,249 @@ var PRC_ESTACIONAMIENTOS = [
 ];
 
 /* ---------------------------------------------------------------------------
+   PROVIDENCIA — NORMAS URBANÍSTICAS POR ZONA DE EDIFICACIÓN
+   ---------------------------------------------------------------------------
+   Fuente: Ordenanza Local Refundida PRCP 2007 (incl. 8 modificaciones,
+   Mod. N°7 Barrio El Aguilucho, D.O. 29-05-2025), Título 4 (Cuadros 8-19),
+   Cuadro 39 (densidades) y Art. 4.3.02 (zonas patrimoniales ZEP).
+
+   IMPORTANTE: esta tabla es DELIBERADAMENTE SEPARADA de PRC_NORMAS (Las
+   Condes) — varios códigos de Providencia (AV, ZE...) coinciden con códigos
+   de Las Condes pero significan otra cosa. Nunca fusionar ambas tablas.
+
+   A diferencia de Las Condes, Providencia no tiene "tablas de densificación"
+   separadas de la base — cada zona trae una sola norma. Sí existen
+   incentivos condicionales (Art. 4.2.28), listados aparte en
+   PRC_INCENTIVOS_PROVIDENCIA.
+   --------------------------------------------------------------------------- */
+var PRC_NORMAS_PROVIDENCIA = {
+  'EC3': {
+    nombre:'Zona de Edificación Continua, de máximo 3 pisos', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'720 hab/ha · 180 viv/ha', predio:'800 m²',
+      cc:1.10, cos:0.60, rasante:'Art. 2.6.3 OGUC', pisos:3, metros:10.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'—', agrup:'Continuo' }],
+    notas:[]
+  },
+  'EC5': {
+    nombre:'Zona de Edificación Continua, de máximo 5 pisos', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'1.160 hab/ha · 290 viv/ha', predio:'800 m²',
+      cc:1.80, cos:0.60, rasante:'Art. 2.6.3 OGUC', pisos:5, metros:16.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'—', agrup:'Continuo' }],
+    notas:[]
+  },
+  'EC7': {
+    nombre:'Zona de Edificación Continua, de máximo 7 pisos', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'1.620 hab/ha · 405 viv/ha', predio:'800 m²',
+      cc:2.50, cos:0.60, rasante:'Art. 2.6.3 OGUC', pisos:7, metros:22.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'—', agrup:'Continuo' }],
+    notas:[]
+  },
+  'EC12': {
+    nombre:'Zona de Edificación Continua, de máximo 12 pisos', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'2.800 hab/ha · 700 viv/ha', predio:'800 m²',
+      cc:4.30, cos:0.60, rasante:'Art. 2.6.3 OGUC', pisos:12, metros:37.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'—', agrup:'Continuo' }],
+    notas:[]
+  },
+  'E5(C+A)': {
+    nombre:'Zona de Edificación de máx. 5 pisos, Continua más Aislada', familia:'media',
+    tablas:[
+      { t:'A', label:'Cuerpo continuo', dens:'880 hab/ha · 220 viv/ha', predio:'800 m²',
+        cc:1.20, cos:0.60, pisos:2, metros:6.00, rasante:'Art. 2.6.3 OGUC',
+        antejardin:'Sin antejardín', dist:'Art. 4.2.19', ados:'Art. 4.2.14/4.2.15', agrup:'Continuo' },
+      { t:'B', label:'Cuerpo aislado sobre el continuo', dens:'880 hab/ha · 220 viv/ha', predio:'800 m²',
+        cc:1.20, cos:0.40, pisos:5, metros:15.00, rasante:'Art. 2.6.3 OGUC',
+        antejardin:'Sin antejardín', dist:'Art. 4.2.19', ados:'—', agrup:'Aislado, retirado 3 m del continuo' }
+    ],
+    notas:['Zona con dos cuerpos: uno continuo (máx. 2 pisos/6 m) y uno aislado sobre o tras él, hasta 5 pisos/15 m totales. Los CC de ambos cuerpos son independientes y no se pueden traspasar entre sí (Art. 4.2.10).']
+  },
+  'EC2+A8': {
+    nombre:'Zona de Edif. Continua, de máx. 2 pisos, más Aislada de máx. 8 pisos', familia:'alta',
+    tablas:[
+      { t:'A', label:'Cuerpo continuo', dens:'1.040 hab/ha · 260 viv/ha', predio:'800 m²',
+        cc:1.20, cos:0.60, pisos:2, metros:7.00, rasante:'Art. 2.6.3 OGUC',
+        antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'—', agrup:'Continuo' },
+      { t:'B', label:'Cuerpo aislado', dens:'1.040 hab/ha · 260 viv/ha', predio:'800 m²',
+        cc:1.60, cos:0.40, pisos:8, metros:28.00, rasante:'Art. 2.6.3 OGUC',
+        antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'—', agrup:'Aislado, hasta 10 pisos / 36 m total' }
+    ],
+    notas:[]
+  },
+  'EC2+A5': {
+    nombre:'Continua + Aislada (código sin tabla propia en la Ordenanza vigente)', familia:'alta',
+    tablas:[
+      { t:'A', label:'Referencia: EC2+A8 (más cercana)', dens:'1.040 hab/ha · 260 viv/ha (ref.)', predio:'800 m²',
+        cc:1.60, cos:0.40, pisos:8, metros:28.00, rasante:'Art. 2.6.3 OGUC',
+        antejardin:'Variable', dist:'Art. 4.2.19', ados:'—', agrup:'Continua + Aislada',
+        nota:'ADVERTENCIA: "EC2+A5" no aparece en el Título 4 de la Ordenanza vigente (solo existe EC2+A8, Art. 4.3.08). Puede ser una designación de una versión anterior del plano que no se actualizó. Verificar directamente con la DOM de Providencia antes de usar este dato.' }
+    ],
+    notas:['Código presente en la capa de zonificación pero sin artículo correspondiente en el texto refundido vigente (mayo 2025). No usar para cálculos de cabida sin confirmar antes con la Municipalidad.']
+  },
+  'EC3+AL': {
+    nombre:'Zona de Edif. Continua, de máx. 3 pisos, más Aislada Libre', familia:'alta',
+    tablas:[
+      { t:'A', label:'Cuerpo continuo', dens:'1.040 hab/ha · 260 viv/ha', predio:'800 m²',
+        cc:3.00, cos:1.00, pisos:3, metros:10.50, rasante:'Art. 2.6.3 OGUC',
+        antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'—', agrup:'Continuo' },
+      { t:'B', label:'Cuerpo aislado (sin límite de altura)', dens:'1.040 hab/ha · 260 viv/ha', predio:'800 m²',
+        cc:4.00, cos:0.40, pisos:null, metros:null, rasante:'Art. 2.6.3 OGUC',
+        antejardin:'Variable', dist:'Art. 4.2.19', ados:'—', agrup:'Aislado, altura libre',
+        nota:'Sin límite normado de pisos/metros — se rige solo por CC, COS y rasante.' }
+    ],
+    notas:['Premio a galerías interiores que unan dos calles (Art. 3.3.06): agrega superficie adicional sobre el CC ya generoso de esta zona.']
+  },
+  'EA3': {
+    nombre:'Zona de Edificación Aislada, de máximo 3 pisos', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'440 hab/ha · 110 viv/ha', predio:'800 m²',
+      cc:0.70, cos:0.40, rasante:'Art. 2.6.3 OGUC', pisos:3, metros:10.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'Art. 4.2.14/4.2.15', agrup:'Aislado' }],
+    notas:['Incentivos condicionales del Art. 4.2.28 aplican en esta zona (ver sección de incentivos).']
+  },
+  'E3': {
+    nombre:'Zona de Edificación de máximo 3 pisos; Aislada, Pareada o Continua', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'720 hab/ha · 180 viv/ha', predio:'800 m²',
+      cc:1.10, cos:0.60, rasante:'Art. 2.6.3 OGUC', pisos:3, metros:9.00,
+      antejardin:'3 m', dist:'Art. 4.2.19', ados:'Art. 4.2.14/4.2.15', agrup:'Aislado, Pareado o Continuo' }],
+    notas:[
+      'Zona incorporada por la Modificación N°7 Barrio El Aguilucho (D.O. 29-05-2025) — verificar que el terreno esté dentro del polígono de esa modificación.',
+      'Incentivos condicionales del Art. 4.2.28 aplican en esta zona (ver sección de incentivos).'
+    ]
+  },
+  'EA5': {
+    nombre:'Zona de Edificación Aislada, de máximo 5 pisos', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'780 hab/ha · 195 viv/ha', predio:'800 m²',
+      cc:1.20, cos:0.40, rasante:'Art. 2.6.3 OGUC', pisos:5, metros:16.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'No permite (ver EA5 pa)', agrup:'Aislado' }],
+    notas:['Incentivos condicionales del Art. 4.2.28 aplican en esta zona (ver sección de incentivos).']
+  },
+  'EA5 pa': {
+    nombre:'Zona de Edificación Aislada, de máximo 5 pisos, permite adosamiento', familia:'media',
+    tablas:[{ t:'A', label:'Base + adosamiento', dens:'780 hab/ha · 195 viv/ha', predio:'800 m²',
+      cc:1.70, cos:0.40, rasante:'Art. 2.6.3 OGUC', pisos:5, metros:16.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'Hasta 2 pisos/7 m (Art. 2.6.2 OGUC)', agrup:'Aislado, permite adosamiento',
+      nota:'CC=1,20 base + 0,50 adicional exclusivo para el cuerpo adosado no residencial, con COS máx. 0,60 en esas 2 plantas.' }],
+    notas:['Incentivos condicionales del Art. 4.2.28 aplican en esta zona (ver sección de incentivos).']
+  },
+  'EA7': {
+    nombre:'Zona de Edificación Aislada, de máximo 7 pisos', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'1.040 hab/ha · 260 viv/ha', predio:'800 m²',
+      cc:1.60, cos:0.20, rasante:'Art. 2.6.3 OGUC', pisos:7, metros:22.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'No permite (ver EA7 pa)', agrup:'Aislado' }],
+    notas:[]
+  },
+  'EA7 pa': {
+    nombre:'Zona de Edificación Aislada, de máximo 7 pisos, permite adosamiento', familia:'media',
+    tablas:[{ t:'A', label:'Base + adosamiento', dens:'1.040 hab/ha · 260 viv/ha', predio:'800 m²',
+      cc:2.20, cos:0.20, rasante:'Art. 2.6.3 OGUC', pisos:7, metros:22.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'Hasta 2 pisos/7 m (Art. 2.6.2 OGUC)', agrup:'Aislado, permite adosamiento',
+      nota:'CC=1,60 base + 0,60 adicional exclusivo para el cuerpo adosado no residencial, con COS máx. 0,60 en esas 2 plantas.' }],
+    notas:['Incentivos condicionales del Art. 4.2.28 aplican en esta zona (ver sección de incentivos).']
+  },
+  'EA12': {
+    nombre:'Zona de Edificación Aislada, de máximo 12 pisos', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'1.100 hab/ha · 275 viv/ha', predio:'800 m²',
+      cc:1.70, cos:0.20, rasante:'Art. 2.6.3 OGUC', pisos:12, metros:37.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'No permite (ver EA12 pa)', agrup:'Aislado' }],
+    notas:[]
+  },
+  'EA12 pa': {
+    nombre:'Zona de Edificación Aislada, de máximo 12 pisos, permite adosamiento', familia:'alta',
+    tablas:[{ t:'A', label:'Base + adosamiento', dens:'1.100 hab/ha · 275 viv/ha', predio:'800 m²',
+      cc:2.30, cos:0.20, rasante:'Art. 2.6.3 OGUC', pisos:12, metros:37.00,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'Hasta 2 pisos/7 m (Art. 2.6.2 OGUC)', agrup:'Aislado, permite adosamiento',
+      nota:'CC=1,70 base + 0,60 adicional exclusivo para el cuerpo adosado no residencial, con COS máx. 0,60 en esas 2 plantas.' }],
+    notas:[]
+  },
+  'EAL pa': {
+    nombre:'Zona de Edificación Aislada Libre, permite adosamiento', familia:'alta',
+    tablas:[{ t:'A', label:'Base (altura libre) + adosamiento', dens:'1.040 hab/ha · 260 viv/ha', predio:'800 m²',
+      cc:3.50, cos:0.20, rasante:'Art. 2.6.3 OGUC', pisos:null, metros:null,
+      antejardin:'Variable (Art. 4.1.06)', dist:'Art. 4.2.19', ados:'Hasta 2 pisos/7 m (Art. 2.6.2 OGUC)', agrup:'Aislado, altura libre, permite adosamiento',
+      nota:'CC=2,90 base sin límite de altura + 0,60 adicional exclusivo para el cuerpo adosado no residencial. Sin límite normado de pisos/metros para el cuerpo aislado.' }],
+    notas:[]
+  },
+
+  /* ---------- ZONAS PATRIMONIALES (Art. 4.3.02) ---------- */
+  'ZEP CE1': {
+    nombre:'Zona Edif. Patrimonial · Continua de Altura Existente 1', familia:'patrimonial',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:null, cos:null,
+      rasante:'Art. 2.6.3 OGUC', pisos:null, metros:null, antejardin:'Existente', dist:'—',
+      ados:'—', agrup:'Continuo', nota:'Debe respetar la altura existente del inmueble o conjunto protegido.' }],
+    notas:['Aplica a Monumentos Históricos, Zonas Típicas, ZCH e ICH según los Cuadros 20-23. Requiere autorización previa del Consejo de Monumentos Nacionales o la SEREMI MINVU según corresponda.']
+  },
+  'ZEP CE2': {
+    nombre:'Zona Edif. Patrimonial · Continua de Altura Existente 2', familia:'patrimonial',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:null, cos:0.80,
+      rasante:'Art. 2.6.3 OGUC', pisos:null, metros:null, antejardin:'Existente', dist:'—',
+      ados:'—', agrup:'Continuo', nota:'Debe respetar la altura existente del inmueble o conjunto protegido.' }],
+    notas:['Aplica a Monumentos Históricos, Zonas Típicas, ZCH e ICH según los Cuadros 20-23. Requiere autorización previa del Consejo de Monumentos Nacionales o la SEREMI MINVU según corresponda.']
+  },
+  'ZEP AE': {
+    nombre:'Zona Edif. Patrimonial · Aislada de Altura Existente', familia:'patrimonial',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:null, cos:0.60,
+      rasante:'Art. 2.6.3 OGUC', pisos:null, metros:null, antejardin:'Existente', dist:'—',
+      ados:'—', agrup:'Aislado', nota:'Debe respetar la altura existente del inmueble o conjunto protegido.' }],
+    notas:['Aplica a Monumentos Históricos, Zonas Típicas, ZCH e ICH según los Cuadros 20-23. Requiere autorización previa del Consejo de Monumentos Nacionales o la SEREMI MINVU según corresponda.']
+  },
+  'ZEP A3': {
+    nombre:'Zona Edif. Patrimonial · Aislada de Máximo 3 Pisos', familia:'patrimonial',
+    tablas:[{ t:'A', label:'Base', dens:'195 viv/ha', predio:'—', cc:1.20, cos:0.60,
+      rasante:'Art. 2.6.3 OGUC', pisos:3, metros:9.00, antejardin:'Existente', dist:'—',
+      ados:'—', agrup:'Aislado, Pareado o Continuo' }],
+    notas:['Aplica a Monumentos Históricos, Zonas Típicas, ZCH e ICH según los Cuadros 20-23. Requiere autorización previa del Consejo de Monumentos Nacionales o la SEREMI MINVU según corresponda.']
+  },
+  'ZEP A4': {
+    nombre:'Zona Edif. Patrimonial · Aislada de Máximo 4 Pisos', familia:'patrimonial',
+    tablas:[{ t:'A', label:'Base', dens:'335 viv/ha', predio:'—', cc:2.00, cos:0.50,
+      rasante:'Art. 2.6.3 OGUC', pisos:4, metros:12.00, antejardin:'Existente', dist:'—',
+      ados:'—', agrup:'Aislado' }],
+    notas:['Aplica a Monumentos Históricos, Zonas Típicas, ZCH e ICH según los Cuadros 20-23.']
+  },
+  'ZEP A7': {
+    nombre:'Zona Edif. Patrimonial · Aislada de Máximo 7 Pisos', familia:'patrimonial',
+    tablas:[{ t:'A', label:'Base', dens:'350 viv/ha', predio:'—', cc:2.10, cos:0.40,
+      rasante:'Art. 2.6.3 OGUC', pisos:7, metros:21.00, antejardin:'Existente', dist:'—',
+      ados:'—', agrup:'Aislado' }],
+    notas:['Aplica a Monumentos Históricos, Zonas Típicas, ZCH e ICH según los Cuadros 20-23.']
+  },
+
+  /* ---------- ZONAS METROPOLITANAS (Art. 5.6.03) ---------- */
+  'ZEMoI': {
+    nombre:'Zona de Equipamiento Metropolitano o Intercomunal', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'440 hab/ha · 110 viv/ha', predio:'2.500 m²',
+      cc:2.00, cos:0.40, rasante:'Art. 2.6.3 OGUC', pisos:5, metros:17.50,
+      antejardin:'5 m', dist:'Art. 4.2.19', ados:'—', agrup:'Aislado' }],
+    notas:[
+      'Hospital del Salvador / Instituto Nacional del Tórax e Instituto de Geriatría, y Hospital Luis Calvo Mackenna, tienen incentivos normativos específicos del Art. 5.6.05 (hasta 8 pisos/28 m si habilitan área libre de uso público). Consultar caso a caso.',
+      'Usos permitidos y prohibidos definidos en el Art. 5.6.04 — equipamiento de servicios, salud, educación, científico, seguridad, social, culto y cultura principalmente; comercio y actividades productivas mayormente restringidas o prohibidas.'
+    ]
+  },
+  'ZIM': {
+    nombre:'Zona de Interés Metropolitano', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'440 hab/ha · 110 viv/ha', predio:'2.500 m²',
+      cc:2.00, cos:0.40, rasante:'Art. 2.6.3 OGUC', pisos:5, metros:17.50,
+      antejardin:'5 m', dist:'Art. 4.2.19', ados:'—', agrup:'Aislado' }],
+    notas:['Usos permitidos y prohibidos definidos en el Art. 5.6.04 — equipamiento de servicios, salud, educación, científico, seguridad, social, culto y cultura principalmente; comercio y actividades productivas mayormente restringidas o prohibidas.']
+  },
+
+  /* ---------- PREDIOS ESPECIALES (Art. 4.3.15) ---------- */
+  'IP': {
+    nombre:'Predio Especial (Art. 4.3.15)', familia:'otro',
+    tablas:[],
+    notas:['Predios menores a 800 m² inscritos antes de la publicación del PRCP y rodeados por edificios de 6+ pisos: pueden ampliarse hasta 3 pisos/10,5 m, COS 0,50, CC 1,50 máximo, o construir según las normas nuevas de su zona. Requiere verificación caso a caso con la DOM — no tiene una tabla numérica fija.']
+  }
+};
+
+/* Incentivos condicionales de Providencia (Art. 4.2.28) — solo aplican en
+   E5(C+A), E3, EA3, EA5, EA5/pa y EA7/pa, y algunos exigen estar dentro del
+   polígono de la Modificación N°7 Barrio El Aguilucho. */
+var PRC_INCENTIVOS_PROVIDENCIA = [
+  ['Sustentabilidad de la edificación', 'Con Certificación de Vivienda Sustentable (CVS): +30% de coeficiente de constructibilidad.'],
+  ['Aumento de superficie vegetal', 'Techos verdes, área libre plantada o antejardín abierto al público, según la zona: +20% de la densidad máxima permitida.'],
+  ['Integración social', 'Con al menos 20% de las viviendas del proyecto destinadas a vivienda de interés público (MINVU): +30% de densidad y +30% de CC exclusivo para esas unidades, sin exigencia de estacionamiento para ellas.']
+];
+
+/* ---------------------------------------------------------------------------
    LO BARNECHEA — normas embebidas en el propio GeoJSON
    ---------------------------------------------------------------------------
    Acá cada polígono trae sus normas como atributos (no hay tabla aparte que
@@ -597,16 +865,27 @@ function splitZona(z){
 }
 
 // Recibe las properties COMPLETAS de un feature (no solo la zona), porque
-// Lo Barnechea necesita todos los campos de norma, no solo el código.
-// Rama según currentComuna: Las Condes usa la tabla PRC_NORMAS (lookup por
-// código de edificación); Lo Barnechea lee las normas directo del feature.
+// algunas comunas necesitan todos los campos de norma, no solo el código.
+// Rama según currentComuna. IMPORTANTE: cada comuna con tabla de normas debe
+// estar explícita acá — si se cae al "default", comunas sin normas propias
+// podrían heredar por accidente códigos que coinciden con los de otra (ej.
+// "AV" existe tanto en Las Condes como en Huechuraba y Providencia, con
+// normas completamente distintas).
 function normasDe(properties){
   if(!properties) return null;
   if(currentComuna === 'Lo Barnechea'){
     return normasLB(properties);
   }
-  // Las Condes (y cualquier otra comuna futura por lookup)
-  return PRC_NORMAS[splitZona(properties.zona).edif] || null;
+  if(currentComuna === 'Las Condes'){
+    return PRC_NORMAS[splitZona(properties.zona).edif] || null;
+  }
+  if(currentComuna === 'Providencia'){
+    return PRC_NORMAS_PROVIDENCIA[splitZona(properties.zona).edif] || null;
+  }
+  // Comuna con geometría y usos de suelo cargados, pero normas urbanísticas
+  // aún sin transcribir de su Ordenanza. renderZona() ya maneja este caso
+  // mostrando "Sin normas cargadas" sin romper nada.
+  return null;
 }
 
 function familiaDe(properties){
@@ -1480,6 +1759,28 @@ function renderZona(feature){
       '</div></div>';
   }
 
+  // Incentivos condicionales de Providencia (Art. 4.2.28) — solo aplican en
+  // un subconjunto de zonas (E5(C+A), E3, EA3, EA5, EA5/pa, EA7/pa).
+  if(currentComuna === 'Providencia'){
+    var zonasConIncentivo = ['E5(C+A)','E3','EA3','EA5','EA5 pa','EA7 pa'];
+    if(zonasConIncentivo.indexOf(sp.edif) !== -1){
+      html += '<div class="prc-section-lbl">Incentivos condicionales (Art. 4.2.28)</div>';
+      html += '<div class="prc-tabla"><div class="prc-tabla-head">' +
+          '<span class="prc-tabla-tag base">+</span>' +
+          '<span class="prc-tabla-label">Incrementos de norma aplicables en esta zona</span>' +
+          '<span class="prc-tabla-arrow">▶</span>' +
+        '</div><div class="prc-tabla-body">' +
+          PRC_INCENTIVOS_PROVIDENCIA.map(function(x){
+            return '<div style="padding:7px 0;border-bottom:1px solid var(--border)">' +
+              '<div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);margin-bottom:3px">' + esc(x[0]) + '</div>' +
+              '<div style="font-size:11.5px;line-height:1.5;color:var(--text-muted)">' + esc(x[1]) + '</div>' +
+            '</div>';
+          }).join('') +
+        '</div></div>' +
+        '<div class="prc-nota" style="margin-top:0">Algunos de estos incentivos, según la zona, solo aplican dentro del polígono de la Modificación N°7 Barrio El Aguilucho. Verificar el plano de detalle correspondiente antes de asumirlos.</div>';
+    }
+  }
+
   html += '<div class="prc-foot">' +
     'Referencial. Verificar siempre contra la Ordenanza vigente y el certificado de informaciones previas de la DOM.' +
     (p.url ? '<br><a href="' + esc(p.url) + '" target="_blank" rel="noopener">Ver ficha en Observatorio Urbano ↗</a>' : '') +
@@ -1695,6 +1996,7 @@ function init(){
     data: function(){ return prcData; },
     dataDe: function(comuna){ return prcDataCache[comuna]; },
     findZonaAt: findZonaAt,
+    normasDe: normasDe,
     normas: PRC_NORMAS,
     comunas: PRC_COMUNAS,
     toggle: togglePRC,
