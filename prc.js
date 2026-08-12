@@ -89,7 +89,7 @@ var PRC_META = {
   },
   'Vitacura': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
-    fuenteNormas: 'Aún no transcritas — solo geometría y usos de suelo por ahora'
+    fuenteNormas: 'Ordenanza PRC Vitacura, Texto Refundido base ene. 2008, refundido ago. 2019 / mar. 2020 (vigente)'
   }
 };
 
@@ -738,6 +738,206 @@ var PRC_INCENTIVOS_PROVIDENCIA = [
 ];
 
 /* ---------------------------------------------------------------------------
+   VITACURA — NORMAS URBANÍSTICAS POR ZONA DE EDIFICACIÓN
+   ---------------------------------------------------------------------------
+   Fuente: Ordenanza del Plan Regulador Comunal de Vitacura, Texto Refundido,
+   Modificado, Actualizado y Sistematizado (Base enero 2008, refundido
+   agosto 2019 / marzo 2020) — versión vigente confirmada en vitacura.cl
+   (el "Informe Fundado de Revisión" 2025 es un estudio preliminar, aún no
+   reemplaza esta Ordenanza). Cuadros 11 a 35 (Art. 41).
+
+   Tabla SEPARADA de PRC_NORMAS y PRC_NORMAS_PROVIDENCIA — mismo criterio de
+   seguridad ante colisión de códigos entre comunas.
+   --------------------------------------------------------------------------- */
+var PRC_NORMAS_VITACURA = {
+  'E-Ab1': {
+    nombre:'Edificación Aislada baja N°1', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'17 hab/ha', predio:'4.000 m² (2.500 m² si pendiente < 20%)',
+      cc:0.4, cos:0.2, rasante:'45°', pisos:2, metros:8.5, antejardin:'10 m',
+      dist:'6 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ab2': {
+    nombre:'Edificación Aislada baja N°2', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'32 hab/ha', predio:'1.000 m²',
+      cc:0.5, cos:0.3, rasante:'60°', pisos:2, metros:8.5, antejardin:'5 m',
+      dist:'4 m', ados:'Según OGUC', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ab3': {
+    nombre:'Edificación Aislada baja N°3', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'56 hab/ha', predio:'500 m²',
+      cc:0.8, cos:0.4, rasante:'60°', pisos:2, metros:8.5, antejardin:'5 m',
+      dist:'Según OGUC', ados:'Según OGUC', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ab4': {
+    nombre:'Edificación Aislada baja N°4', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'104 hab/ha', predio:'250 m²',
+      cc:0.8, cos:0.4, rasante:'60°', pisos:2, metros:8.5, antejardin:'5 m',
+      dist:'Según OGUC', ados:'Según OGUC', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Am1': {
+    nombre:'Edificación Aislada media N°1', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'216 hab/ha', predio:'1.000 m²',
+      cc:0.8, cos:0.3, rasante:'60°', pisos:3, metros:10.5, antejardin:'7 m',
+      dist:'Según OGUC', ados:'Según OGUC', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Am2': {
+    nombre:'Edificación Aislada media N°2', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'28 hab/ha', predio:'4.000 m² (2.500 m² si pendiente < 20%)',
+      cc:0.4, cos:0.1, rasante:'60°', pisos:3, metros:10.5, antejardin:'15 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Am3': {
+    nombre:'Edificación Aislada media N°3', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'328 hab/ha', predio:'1.500 m²',
+      cc:1.0, cos:0.2, rasante:'70°', pisos:7, metros:24.5, antejardin:'7 m',
+      dist:'8 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:['Existe una subzona (E-Am3 sz) con las mismas normas de edificación pero densidad bruta máxima de 280 hab/ha en vez de 328 — verificar en el plano cuál aplica al predio.']
+  },
+  'E-Am4': {
+    nombre:'Edificación Aislada media N°4', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'360 hab/ha', predio:'800 m²',
+      cc:1.0, cos:0.4, rasante:'60°', pisos:5, metros:17.5,
+      antejardin:'7 m', dist:'3 m + 1 m por cada piso sobre el 2° (máx. 6 m)',
+      ados:'Según OGUC', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Am5': {
+    nombre:'Edificación Aislada media N°5', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'508 hab/ha', predio:'1.200 m²',
+      cc:1.6, cos:0.35, rasante:'70°', pisos:7, metros:24.5,
+      antejardin:'7 m', dist:'3 m + 0,6 m por cada piso sobre el 2° (máx. 6 m)',
+      ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Am6': {
+    nombre:'Edificación Aislada media N°6', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'84 hab/ha', predio:'4.000 m² (2.500 m² si pendiente < 20%)',
+      cc:0.6, cos:0.15, rasante:'60°', pisos:4, metros:14, antejardin:'15 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Aa1': {
+    nombre:'Edificación Aislada alta N°1', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'612 hab/ha', predio:'1.500 m²',
+      cc:2.0, cos:0.4, rasante:'70°', pisos:12, metros:42,
+      antejardin:'7 m', dist:'3 m + 0,5 m por cada piso sobre el 2° (máx. 8 m)',
+      ados:'Prohibido', agrup:'Aislado' }],
+    notas:['El Art. 19 permite superar los 12 pisos incrementando el antejardín en la misma medida que la altura adicional perseguida — pero sin sobrepasar nunca la altura máxima en metros de esta tabla (42 m).']
+  },
+  'E-Aa2': {
+    nombre:'Edificación Aislada alta N°2', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'840 hab/ha', predio:'1.000 m²',
+      cc:2.8, cos:0.4, rasante:'70°', pisos:null, metros:null,
+      antejardin:'7 m', dist:'3 m + 0,5 m por cada piso sobre el 2° (máx. 10 m)',
+      ados:'Según OGUC', agrup:'Aislado, altura libre',
+      nota:'Sin límite normado de pisos/metros — se rige solo por CC, COS, rasante y el Art. 19 (altura ligada al ancho de la calle + antejardín).' }],
+    notas:[]
+  },
+  'E-Ae1': {
+    nombre:'Edificación Aislada especial N°1', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'48 hab/ha', predio:'2.000 m²',
+      cc:0.6, cos:0.2, rasante:'60°', pisos:3, metros:10.5, antejardin:'10 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ae2': {
+    nombre:'Edificación Aislada especial N°2', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'368 hab/ha', predio:'800 m²',
+      cc:1.6, cos:0.35, rasante:'60°', pisos:4, metros:14, antejardin:'6 m',
+      dist:'4 m', ados:'Según OGUC', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ae3': {
+    nombre:'Edificación Aislada especial N°3', familia:'baja',
+    tablas:[{ t:'A', label:'Base', dens:'60 hab/ha', predio:'2.500 m²',
+      cc:0.4, cos:0.2, rasante:'60°', pisos:3, metros:10.5, antejardin:'10 m',
+      dist:'8 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:['Existe una subzona (E-Ae3 sz) con CC 0,5, COS 0,5, altura 3 pisos/12 m y densidad 92 hab/ha — verificar en el plano cuál aplica.']
+  },
+  'E-Ae4': {
+    nombre:'Edificación Aislada especial N°4', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'116 hab/ha', predio:'2.000 m²',
+      cc:1.0, cos:0.2, rasante:'60°', pisos:4, metros:14, antejardin:'10 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ae5': {
+    nombre:'Edificación Aislada especial N°5', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'796 hab/ha', predio:'1.500 m²',
+      cc:1.8, cos:0.6, rasante:'70°', pisos:9, metros:31.5, antejardin:'7 m',
+      dist:'8 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ae6': {
+    nombre:'Edificación Aislada especial N°6', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'728 hab/ha', predio:'1.500 m²',
+      cc:2.4, cos:0.6, rasante:'70°', pisos:null, metros:null, antejardin:'7 m',
+      dist:'8 m', ados:'Prohibido', agrup:'Aislado, altura libre' }],
+    notas:[]
+  },
+  'E-Ae7': {
+    nombre:'Edificación Aislada especial N°7', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'220 hab/ha', predio:'2.000 m²',
+      cc:2.0, cos:0.15, rasante:'70°', pisos:12, metros:42, antejardin:'10 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ae8': {
+    nombre:'Edificación Aislada especial N°8', familia:'alta',
+    tablas:[{ t:'A', label:'Base', dens:'412 hab/ha', predio:'2.500 m²',
+      cc:2.0, cos:0.2, rasante:'70°', pisos:12, metros:42, antejardin:'10 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ae9': {
+    nombre:'Edificación Aislada especial N°9', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'156 hab/ha', predio:'2.000 m²',
+      cc:1.0, cos:0.15, rasante:'70°', pisos:6, metros:21, antejardin:'10 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+  'E-Ae10': {
+    nombre:'Edificación Aislada especial N°10', familia:'media',
+    tablas:[{ t:'A', label:'Base', dens:'116 hab/ha', predio:'2.000 m²',
+      cc:0.8, cos:0.2, rasante:'70°', pisos:5, metros:17.5, antejardin:'10 m',
+      dist:'10 m', ados:'Prohibido', agrup:'Aislado' }],
+    notas:[]
+  },
+
+  /* ---------- ZONAS ESPECIALES (parques, áreas verdes) ---------- */
+  'E-e2': {
+    nombre:'Edificación Especial N°2 · Parques Metropolitanos', familia:'verde',
+    tablas:[{ t:'A', label:'Normas complementarias', dens:'—', predio:'—', cc:null, cos:null,
+      rasante:'60°', pisos:null, metros:9, antejardin:'20 m', dist:'20 m',
+      ados:'No se permite', agrup:'—' }],
+    notas:['Parque Metropolitano San Cristóbal y Parque del Río Mapocho. Se rige principalmente por el Art. 5.2.2 de la Ordenanza del PRMS; estas son solo normas complementarias del PRC de Vitacura para el sector oriente del Puente Centenario.']
+  },
+  'E-e3': {
+    nombre:'Edificación Especial N°3 · Parques Intercomunales', familia:'verde',
+    tablas:[{ t:'A', label:'Normas complementarias', dens:'—', predio:'Existente', cc:null, cos:null,
+      rasante:'—', pisos:null, metros:3.5, antejardin:'10 m', dist:'20 m',
+      ados:'No se permite', agrup:'—' }],
+    notas:['Incluye Parques (Naciones Unidas, Cuauhtémoc), Cerros Isla (parte de Cerro Alvarado y Cerro Manquehue) y Avenidas Parque (Alonso de Córdova, Américo Vespucio Norte, Bicentenario, Luis Pasteur Norte, Nueva Costanera, etc). Se rige principalmente por el Art. 5.2.3 de la Ordenanza del PRMS.']
+  },
+  'E-e4': {
+    nombre:'Edificación Especial N°4 · Áreas Verdes Complementarias', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.30, cos:0.15, al:0.70,
+      rasante:'60°', pisos:3, metros:10.5, antejardin:'10 m (variable en Club de Golf Sport Francés)',
+      dist:'10 m', ados:'Según OGUC', agrup:'Aislado' }],
+    notas:[
+      'Equipamiento recreacional-deportivo existente: clubes de polo, de golf, estadios (Banco de Chile, Croata, Manquehue, Sirio, Instituto Nacional, Santa Úrsula) y clubes de oficiales.',
+      'El 20% de la superficie del predio puede destinarse a otros usos con normas propias, definidas caso a caso mediante un seccional específico.'
+    ]
+  }
+};
+
+/* ---------------------------------------------------------------------------
    LO BARNECHEA — normas embebidas en el propio GeoJSON
    ---------------------------------------------------------------------------
    Acá cada polígono trae sus normas como atributos (no hay tabla aparte que
@@ -881,6 +1081,9 @@ function normasDe(properties){
   }
   if(currentComuna === 'Providencia'){
     return PRC_NORMAS_PROVIDENCIA[splitZona(properties.zona).edif] || null;
+  }
+  if(currentComuna === 'Vitacura'){
+    return PRC_NORMAS_VITACURA[splitZona(properties.zona).edif] || null;
   }
   // Comuna con geometría y usos de suelo cargados, pero normas urbanísticas
   // aún sin transcribir de su Ordenanza. renderZona() ya maneja este caso
