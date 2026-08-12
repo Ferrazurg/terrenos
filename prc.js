@@ -73,7 +73,7 @@ var PRC_META = {
   },
   'La Florida': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
-    fuenteNormas: 'Aún no transcritas — solo geometría y usos de suelo por ahora'
+    fuenteNormas: 'Texto Refundido Ordenanza Local PRC La Florida, sept. 2016 (incl. Mod. N°1-11) — normas transcritas solo para zonas con norma conjunta (AV, ED, ESP, RI, R, PEDC-3 y Sector Centro); zonas U-Vev/U-EC solo traen uso de suelo, falta el plano de edificación PRLF-1'
   },
   'Colina': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
@@ -938,6 +938,311 @@ var PRC_NORMAS_VITACURA = {
 };
 
 /* ---------------------------------------------------------------------------
+   LA FLORIDA — NORMAS URBANÍSTICAS
+   ---------------------------------------------------------------------------
+   Fuente: Texto Refundido Ordenanza Local PRC La Florida, Septiembre 2016
+   (incluye Modificaciones N°1 a N°11).
+
+   OJO — Esta comuna es distinta a las demás ya cargadas. El GeoJSON que
+   tenemos (Plano PRLF-2, "usos de suelo") NO trae el plano de "áreas de
+   edificación" (E-AB1, E-AB2... Art. 26), que en la Ordenanza va en un plano
+   aparte (PRLF-1) y se superpone al de usos de suelo. Por eso:
+     - Las zonas U-Vev1..4 y U-EC1/3/4 SOLO traen norma de uso de suelo (ya
+       vienen en el GeoJSON como uperm/uproh) — sin el plano de edificación
+       no se puede dar altura/CC para un lote que caiga solo en esa zona. Si
+       más adelante se consigue el Plano PRLF-1, se puede sumar como capa
+       aparte y cruzar ambos planos igual que Las Condes (uso/edificación).
+     - Las "zonas con normas conjuntas" (Art. 29 y 32: AV, ED, ESP, RI, R,
+       PEDC-3, y las 5 zonas del Sector Centro Z-*) sí traen su propia norma
+       de edificación directamente en la Ordenanza — esas son las que se
+       transcriben acá.
+
+   ADVERTENCIA de datos (GeoJSON MINVU/IDE Chile): el polígono de "ESP-1
+   Manzana Cívica" viene mal etiquetado con código de zona "ESP-2" (el campo
+   nombre_zona sí dice "ESP-1..."). Se corrige por nombre_zona en
+   claveLaFlorida(), no por el código "zona" tal cual viene.
+
+   ADVERTENCIA de datos: la zona "ZRM-DT" (Zona Residencial Mixta
+   Departamental/Tobalaba) no existe en el Texto Refundido de Sept. 2016 que
+   se usó de fuente — debe ser de una modificación posterior no incluida en
+   ese documento. No se transcribió su norma; verificar con la Ordenanza
+   vigente actualizada o con la DOM de La Florida antes de usar este dato.
+   --------------------------------------------------------------------------- */
+var PRC_NORMAS_LAFLORIDA = {
+
+  /* ---------- SECTOR CENTRO (Art. 32, numeral 9) ---------- */
+  'Z-AA1': {
+    nombre:'Zona de Edificación Aislada Alta', familia:'alta',
+    tablas:[
+      { t:'A', label:'Densificación de vivienda en altura', dens:'Libre', predio:'1.000 m²',
+        cc:3.5, cos:0.30, rasante:'70°', pisos:null, metros:null,
+        antejardin:'3 m (construcción obligatoria sobre la línea de edificación)',
+        dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Altura libre según rasantes. Si el edificio incluye equipamiento en el cuerpo bajo (galerías, oficinas, servicios), el COS del primer piso puede subir a 0,6 (60%) hasta los 15 m de altura; sobre ese nivel la vivienda queda limitada a COS 0,3 (30%).' }
+    ],
+    notas:['Para equipamiento puro se aplican las condiciones de la letra C) del numeral 9 "Zonas del Sector Centro": predio mínimo 1.000 m² y COS/CC según escala (Mayor 0,70/4,0 · Mediana 0,70/4,0 · Menor 0,70/4,0 · Básica 0,50/2,5).']
+  },
+  'Z-AA2': {
+    nombre:'Zona de Transición a Edificación Aislada Alta', familia:'alta',
+    tablas:[
+      { t:'A', label:'Densificación con desafectación de bienes nacionales de uso público', dens:'Libre', predio:'1.000 m²',
+        cc:3.00, cos:0.40, rasante:'70°', pisos:null, metros:null,
+        antejardin:'5 m (construcción obligatoria sobre la línea de edificación)',
+        dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Solo para proyectos que requieran una superficie superior a una manzana y accedan a desafectar bienes nacionales de uso público (calles/áreas verdes), reponiéndolos dentro del mismo proyecto. Altura libre según rasantes. Equipamiento en los primeros 15 m puede subir el COS del primer piso a 0,6.' },
+      { t:'B', label:'Densificación general (sin desafectación)', dens:'Libre', predio:'1.000 m²',
+        cc:2.40, cos:0.40, rasante:'70°', pisos:null, metros:null,
+        antejardin:'5 m (construcción obligatoria sobre la línea de edificación)',
+        dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Altura libre según rasante y distanciamiento. Equipamiento en el diseño puede subir el COS del primer piso a 0,6 hasta 15 m; sobre ese nivel la vivienda queda limitada a COS 0,4 (40%).' },
+      { t:'C', label:'Ampliación de vivienda existente', dens:'Libre', predio:'—',
+        cc:1.40, cos:0.70, rasante:'70°', pisos:2, metros:7,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'—', agrup:'Aislado, pareado y continuo' }
+    ],
+    notas:['Las condiciones específicas de equipamiento están en la letra C del numeral 9 "Zonas del Sector Centro" de la Ordenanza.']
+  },
+  'Z-AA+CB/CM': {
+    nombre:'Zona de Edificación Aislada Alta con Continuidad Baja y Media', familia:'alta',
+    tablas:[
+      { t:'A', label:'Frente a Av. Vicuña Mackenna (tramos específicos)', dens:'Libre', predio:'1.000 m²',
+        cc:3.00, cos:'0,60 hasta 7 m y 0,40 sobre esta altura', rasante:'70° (edificación aislada, aplicada sobre la continua)',
+        pisos:null, metros:null, antejardin:'No se contempla (construcción obligatoria sobre línea oficial)',
+        dist:'O.G.U.C.', ados:'—', agrup:'Continuo hasta 2 pisos (7 m) y aislado sobre esta altura',
+        nota:'Aplica a predios con frente principal en Av. Vicuña Mackenna Pte./Ote. entre Mirador Azul y calle Cabildo, y entre Serafín Zamora y Av. Américo Vespucio. El cuerpo continuo debe emplazarse en la línea de edificación y ocupar entre 20% y 40% del deslinde (hasta 40% con autorización notarial del vecino); no puede ser solo fachada ni destinarse a estacionamientos. En el tramo Vicuña Mackenna Oriente entre Barcelona y Cabildo, el COS hasta 7 m sube a 0,8.' },
+      { t:'B', label:'Densificación general (fuera de esos tramos)', dens:'Libre', predio:'1.000 m²',
+        cc:3.20, cos:0.40, rasante:'70°',
+        pisos:null, metros:null, antejardin:'5 m (sin exigencia en predios que enfrentan Av. Vicuña Mackenna Pte./Ote. entre Departamental y Mirador Azul, construcción obligatoria sobre línea oficial)',
+        dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Altura mínima 7 m; máxima libre según rasantes y distanciamientos.' },
+      { t:'C', label:'Ampliación de vivienda existente', dens:'Libre', predio:'—',
+        cc:1.40, cos:0.70, rasante:'70°', pisos:null, metros:7.5,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'—', agrup:'Aislado, pareado y continuo' }
+    ],
+    notas:['Las condiciones específicas de equipamiento están en la letra C del numeral 9 "Zonas del Sector Centro" de la Ordenanza.']
+  },
+  'Z-AA+CM': {
+    nombre:'Zona de Edificación Aislada Alta con Continuidad Media', familia:'alta',
+    tablas:[
+      { t:'A', label:'Base', dens:'Libre', predio:'1.500 m²',
+        cc:4.00, cos:'0,70 hasta 24 m y 0,35 sobre esta altura', rasante:'70° sobre 24 m',
+        pisos:null, metros:null, antejardin:'5 m', dist:'6 m', ados:'—',
+        agrup:'Continuo y aislado',
+        nota:'Cuerpo continuo con altura mínima de 9 m y máxima de 24 m; sobre este, cuerpo aislado con altura libre según rasantes. La edificación continua se aplica en una franja de 15 m de ancho desde la línea de edificación en todo el perímetro que enfrenta ejes viales (excepto Serafín Zamora entre Vicuña Mackenna Oriente y Américo Vespucio). El tramo de Vicuña Mackenna Oriente entre Plaza Vespucio y Serafín Zamora exige antejardín obligatorio de 15 m.' }
+    ],
+    notas:[
+      'No se permite el emplazamiento de estacionamientos en superficie.',
+      'El área libre debe disponerse en el nivel natural del terreno.',
+      'La carga y descarga de insumos o mercaderías debe realizarse en espacio privado.',
+      'El cuerpo continuo no puede destinarse a vivienda.',
+      'Las condiciones específicas de equipamiento están en la letra C del numeral 9 "Zonas del Sector Centro" de la Ordenanza.'
+    ]
+  },
+  'Z-AM': {
+    nombre:'Zona de Edificación Aislada de Altura Media', familia:'media',
+    tablas:[
+      { t:'A', label:'Predios frente a Av. Vespucio, Lía Aguirre, Walker Martínez, Colombia y costado oriente de Punta Arenas', dens:'Libre', predio:'1.000 m²',
+        cc:2.00, cos:0.40, rasante:'70°', pisos:null, metros:null,
+        antejardin:'5 m (construcción obligatoria sobre la línea de edificación)', dist:'6 m',
+        ados:'—', agrup:'Aislado',
+        nota:'Altura libre según rasantes. No aplica a los predios colindantes al Santuario de Schöenstatt (entre Walker Martínez, Colombia, Vicente Valdés y La Concepción), que se rigen por el Área de Edificación E-AM2.' },
+      { t:'B', label:'Predios frente a Av. Vicuña Mackenna Poniente entre Punta Arenas y San Antonio', dens:'Libre', predio:'1.000 m²',
+        cc:3.00, cos:'0,60 hasta 7 m y 0,40 sobre esta altura', rasante:'70° (edificación aislada, aplicada sobre la continua)',
+        pisos:null, metros:null, antejardin:'No se aplica (construcción obligatoria sobre línea oficial)',
+        dist:'O.G.U.C.', ados:'—', agrup:'Continuo hasta 2 pisos (7 m) y aislado sobre esta altura',
+        nota:'Entre calle Punta Arenas y Mirador Azul el sistema de agrupamiento obligatorio es Aislado (sin cuerpo continuo).' },
+      { t:'C', label:'Densificación de altura media', dens:'Libre', predio:'1.000 m²',
+        cc:1.50, cos:0.40, rasante:'70°', pisos:8, metros:24,
+        antejardin:'5 m (construcción obligatoria sobre la línea de edificación)', dist:'4 m',
+        ados:'—', agrup:'Aislado' },
+      { t:'D', label:'Ampliación de vivienda existente', dens:'Libre', predio:'—',
+        cc:1.40, cos:0.70, rasante:'70°', pisos:2, metros:7,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'—', agrup:'Aislado, pareado y continuo' }
+    ],
+    notas:['Las condiciones específicas de equipamiento están en la letra C del numeral 9 "Zonas del Sector Centro" de la Ordenanza.']
+  },
+
+  /* ---------- ÁREAS VERDES (Art. 32, numeral 1) ---------- */
+  'AV1.1': {
+    nombre:'Parque Isabel Riquelme', familia:'verde',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:0.05, cos:0.05,
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—',
+      nota:'COS y CC máximos de 5% y 0,05 respectivamente. Estacionamientos según Art. 7.1.2 del PRMS.' }],
+    notas:['Se rige por el Art. 5.2.3.1 del PRMS.']
+  },
+  'AV1.2': {
+    nombre:'Parque El Panul', familia:'verde',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:0.05, cos:'Según OGUC',
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—',
+      nota:'CC máximo 0,05. Estacionamientos según Art. 7.1.2 del PRMS.' }],
+    notas:['Se rige por el Art. 5.2.3.1 del PRMS.']
+  },
+  'AV1.3': {
+    nombre:'Parque La Salle', familia:'verde',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:0.05, cos:'Según OGUC',
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—',
+      nota:'CC máximo 0,05. Estacionamientos según Art. 7.1.2 del PRMS.' }],
+    notas:['Se rige por el Art. 5.2.3.1 del PRMS.']
+  },
+  'AV2': {
+    nombre:'Cerros Islas', familia:'verde',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:0.05, cos:0.05,
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—',
+      nota:'COS y CC máximos de 5% y 0,05. Estacionamientos según Art. 7.1.2 del PRMS.' }],
+    notas:['Se rige por el Art. 5.2.3.2 del PRMS.']
+  },
+  'AV4': {
+    nombre:'Avenidas Parque', familia:'verde',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'—', cc:0.01, cos:0.01,
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—',
+      nota:'COS y CC máximos de 1%. Estacionamientos según Art. 7.1.2 del PRMS.' }],
+    notas:['Se rige por el Art. 5.2.3.4 del PRMS.']
+  },
+
+  /* ---------- ZONAS DE RESTRICCIÓN COMBINADAS CON ÁREA VERDE ---------- */
+  'R-1/AV3': {
+    nombre:'Restricción por Quebradas / Parques Quebradas', familia:'verde',
+    tablas:[{ t:'A', label:'Norma de AV3 (referencial)', dens:'—', predio:'—', cc:0.01, cos:0.01,
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }],
+    notas:['Zona de restricción por quebrada (PRMS Art. 8.2.1.1) superpuesta con Parque Quebrada (AV3 del PRC Local). Se rige principalmente por el PRMS — la norma de edificación mostrada es la de AV3 y es solo referencial.']
+  },
+  'R-2/AV4': {
+    nombre:'Restricción por Canales / Avenidas Parque', familia:'verde',
+    tablas:[{ t:'A', label:'Norma de AV4 (referencial)', dens:'—', predio:'—', cc:0.01, cos:0.01,
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }],
+    notas:['Zona de restricción por canal (PRMS Art. 8.2.1.1) superpuesta con Avenida Parque (AV4 del PRC Local). Se rige principalmente por el PRMS — la norma de edificación mostrada es la de AV4 y es solo referencial.']
+  },
+  'R-3/AV5': {
+    nombre:'Riesgo por Derrumbe y Asentamiento de Suelo / Área Verde Ex Pozo de Áridos', familia:'verde',
+    tablas:[{ t:'A', label:'Norma de AV5 (referencial)', dens:'—', predio:'5 Há', cc:0.02, cos:'Según OGUC',
+      rasante:'O.G.U.C.', pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }],
+    notas:['Zona de riesgo por derrumbe (PRMS Art. 8.2.1.2) superpuesta con Área Verde Ex Pozo de Áridos (AV5 del PRC Local). Se rige principalmente por el PRMS — la norma de edificación mostrada es la de AV5 y es solo referencial.']
+  },
+  'R-4': {
+    nombre:'Riesgo Geofísico Asociado a Remoción en Masa', familia:'otro',
+    tablas:[],
+    notas:['Se rige íntegramente por el PRMS (Título 8, Art. 8.2.1.4). La Ordenanza Local de La Florida no fija una norma de edificación propia para esta zona.']
+  },
+  'R-5/AV6': {
+    nombre:'Restricción por Pendiente / Área Verde en Zona de Pendiente', familia:'verde',
+    tablas:[{ t:'A', label:'Norma de AV6 (referencial)', dens:'—', predio:'—', cc:0.01, cos:'Según OGUC',
+      rasante:'O.G.U.C.', pisos:null, metros:7, antejardin:'—', dist:'—', ados:'—', agrup:'Aislado' }],
+    notas:['Zona de restricción por pendiente (PRMS Título 8) superpuesta con Área Verde en Zona de Pendiente (AV6 del PRC Local, se rige por Art. 3.3.2 PRMS). La norma de edificación mostrada es la de AV6 y es solo referencial.']
+  },
+
+  /* ---------- EQUIPAMIENTO DEPORTE (Art. 32, numeral 2) ---------- */
+  'ED-1': { nombre:'Estadio Entel', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+  'ED-2': { nombre:'Balneario Municipal', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+  'ED-3': { nombre:'Estadio Contraloría General de la República', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+  'ED-4': { nombre:'Estadio Caja de Compensación La Araucana', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+  'ED-6': { nombre:'Estadio Municipal de La Florida (Audax Italiano)', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+  'ED-8': { nombre:'Complejo Deportivo Estrella Manuel Rodríguez', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+  'ED-9': { nombre:'Deportivo Bayer', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+  'ED-11': { nombre:'Complejo Deportivo Gabriela Mistral', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:0.6, cos:0.2, rasante:'O.G.U.C.',
+      pisos:null, metros:null, antejardin:'—', dist:'—', ados:'—', agrup:'—' }], notas:['Se rige por el Art. 5.2.4.1 del PRMS.'] },
+
+  /* ---------- ZONAS ESPECIALES (Art. 32, numeral 3) ---------- */
+  'ESP-1': {
+    nombre:'Manzana Cívica', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'Libre', predio:'No se exige', cc:'Libre', cos:0.70,
+      rasante:'70° aplicada sobre 11 m', pisos:null, metros:null,
+      antejardin:'No se contempla', dist:'Según O.G.U.C.', ados:'—', agrup:'Aislado, pareado y continuo',
+      nota:'Altura libre según rasante. Los predios destinados a equipamiento pueden aumentar el COS hasta 0,90.' }],
+    notas:['Av. Vicuña Mackenna con Cabildo. En el GeoJSON de origen (MINVU) este polígono viene etiquetado erróneamente con el código de zona "ESP-2"; se corrigió acá usando el nombre de la zona.']
+  },
+  'ESP-2': {
+    nombre:'Terrenos Consultorio', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:3.29, cos:0.84,
+      rasante:'Según OGUC', pisos:null, metros:null,
+      antejardin:'No se contempla', dist:'Según O.G.U.C.', ados:'No se permiten', agrup:'Aislado',
+      nota:'Altura libre según rasante. Estacionamientos según Art. 15 de la Ordenanza Local.' }],
+    notas:['Av. El Parque con Froilán Roa (terreno del Hospital/Consultorio de La Florida). Usos permitidos: solo Salud; se prohíbe clínica veterinaria, cementerios y crematorio.']
+  },
+  'ESP-3': {
+    nombre:'Terrenos Congregación Salesiana - Lo Cañas', familia:'patrimonial',
+    tablas:[{ t:'A', label:'Se rige por el Área de Edificación E-AM3 (Art. 30, N°8)', dens:'185 viv/há máx. · 10 viv/há mín.',
+      predio:'700 m²', cc:2.08, cos:'0,52 (0,60 si es vivienda existente)', rasante:'70°',
+      pisos:null, metros:14.4, antejardin:'5 m', dist:'Según O.G.U.C.',
+      ados:'No se permite, salvo vivienda existente según O.G.U.C.', agrup:'Aislado',
+      nota:'Para equipamiento en este predio, la Ordenanza fija altura máxima de 16,8 m, antejardín 4 m, distancia a medianero según OGUC y sin adosamiento (Art. 30, tabla de Área E-AM3).' }],
+    notas:['Usos permitidos: solo Culto y Cultura, y Educación. La Ordenanza remite directamente a la norma de edificación del Área E-AM3 en vez de darle una tabla propia.']
+  },
+  'ESP-4': {
+    nombre:'Precordillera', familia:'verde',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'1 Há', cc:0.014, cos:0.014,
+      rasante:'70°', pisos:null, metros:8, antejardin:'8 m', dist:'Según O.G.U.C.',
+      ados:'No se permite', agrup:'Aislado',
+      nota:'Coeficiente de Suelo Natural mínimo de 0,972 — al menos 97,2% del predio debe mantenerse sin intervenir. Estacionamientos según Art. 15 de la Ordenanza Local.' }],
+    notas:[]
+  },
+
+  /* ---------- RESGUARDO DE INFRAESTRUCTURA (Art. 32, numeral 4) ---------- */
+  'RI': {
+    nombre:'Zona de Resguardo de Infraestructura (código genérico)', familia:'equipamiento',
+    tablas:[],
+    notas:['El código "RI" tal cual (sin sufijo) es ambiguo en este GeoJSON: la Ordenanza solo define RI-1 (Terminales Rodoviarios) y RI-2 (Infraestructura Sanitaria y Energética), cada una con norma propia. Verificar contra el plano cuál de las dos aplica al polígono antes de usar cualquier norma.']
+  },
+  'RI-1': {
+    nombre:'Terminales Rodoviarios de Locomoción Colectiva Urbana', familia:'equipamiento',
+    tablas:[],
+    notas:[
+      'La Ordenanza distingue dos terminales con normas distintas, y este GeoJSON no trae el sufijo que las diferencia — verificar cuál corresponde al polígono antes de estimar cabida:',
+      'RI-1.1 Terminal Rodoviario Bellavista (Línea 5 Metro): sobre el nivel de suelo se rige por la norma de la zona Z-AA+CB/CM (ver esa ficha en este mismo panel).',
+      'RI-1.2 Sector Av. Departamental – Av. Tobalaba: se rige por la norma del Área de Edificación E-AM3 (predio 700 m², COS 0,52/0,60, CC 2,08, altura 14,4 m, aislado, rasante 70°, antejardín 5 m).'
+    ]
+  },
+  'RI-2': {
+    nombre:'Infraestructura Sanitaria y Energética', familia:'equipamiento',
+    tablas:[{ t:'A', label:'Base', dens:'—', predio:'Existente', cc:'Máximo 0,3', cos:'Máximo 0,15',
+      rasante:'O.G.U.C.', pisos:null, metros:9, antejardin:'Mínimo 8 m', dist:'Mínima 8 m',
+      ados:'No', agrup:'Aislado' }],
+    notas:['Agua potable, acueductos, líneas de alta tensión y Central Hidroeléctrica La Florida. Se rige por el Título 8, Capítulo 8.4 del PRMS; las instalaciones nuevas deben incluir clasificación de riesgo industrial otorgada por la SESMA.']
+  },
+
+  /* ---------- OTRAS ZONAS CON NORMA CONJUNTA ---------- */
+  'PEDC-3': {
+    nombre:'Zona de Protección Ecológica con Desarrollo Controlado N°3', familia:'verde',
+    tablas:[],
+    notas:['Se rige por el Título 8, Capítulo 8.3, Art. 8.3.1.2 del PRMS. La Ordenanza Local de La Florida no fija una tabla numérica propia para esta zona.']
+  },
+  'PL': {
+    nombre:'Zona de Plazas', familia:'verde',
+    tablas:[],
+    notas:['Bien Nacional de Uso Público (Art. 21 de la Ordenanza Local) — plazas. Sin norma de edificación propia; se integra como espacio público.']
+  },
+
+  /* ---------- ZONA NO VERIFICADA ---------- */
+  'ZRM-DT': {
+    nombre:'Zona Residencial Mixta - Departamental/Tobalaba', familia:'otro',
+    tablas:[],
+    notas:['Esta zona no aparece en el Texto Refundido de la Ordenanza (Septiembre 2016, incl. Mod. N°1-11) usado como fuente — debe corresponder a una modificación posterior no incluida en ese documento. No se transcribió su norma de edificación: verificar directamente con la Ordenanza vigente actualizada o con la DOM de La Florida antes de usar este dato para un terreno en esta zona.']
+  }
+};
+
+/* Corrige el error de etiquetado del dato de origen (ESP-1 viene marcado
+   como "ESP-2" en el campo "zona"; se distingue por nombre_zona) y entrega
+   la clave correcta para buscar en PRC_NORMAS_LAFLORIDA. */
+function claveLaFlorida(p){
+  var z = (p && p.zona || '').toString();
+  if(z === 'ESP-2' && /^ESP-1/.test(p.nombre_zona || '')) return 'ESP-1';
+  return z;
+}
+
+/* ---------------------------------------------------------------------------
    LO BARNECHEA — normas embebidas en el propio GeoJSON
    ---------------------------------------------------------------------------
    Acá cada polígono trae sus normas como atributos (no hay tabla aparte que
@@ -1084,6 +1389,12 @@ function normasDe(properties){
   }
   if(currentComuna === 'Vitacura'){
     return PRC_NORMAS_VITACURA[splitZona(properties.zona).edif] || null;
+  }
+  if(currentComuna === 'La Florida'){
+    // Ojo: acá NO se usa splitZona(), porque varios códigos de zona de La
+    // Florida traen su propio "/" como parte del código (ej. "R-1/AV3"), no
+    // como separador uso/edificación.
+    return PRC_NORMAS_LAFLORIDA[claveLaFlorida(properties)] || null;
   }
   // Comuna con geometría y usos de suelo cargados, pero normas urbanísticas
   // aún sin transcribir de su Ordenanza. renderZona() ya maneja este caso
@@ -1886,7 +2197,8 @@ function renderZona(feature){
   }
 
   // Tablas de normas
-  html += '<div class="prc-section-lbl">Normas urbanísticas · ' + esc(sp.edif) + '</div>';
+  var etiquetaNorma = (currentComuna === 'La Florida') ? p.zona : sp.edif;
+  html += '<div class="prc-section-lbl">Normas urbanísticas · ' + esc(etiquetaNorma) + '</div>';
   if(!n){
     html += '<div style="font-size:12px;color:var(--text-faint);font-style:italic">Sin normas cargadas para esta zona de edificación.</div>';
   } else if(!n.tablas.length){
