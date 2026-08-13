@@ -58,7 +58,8 @@ var PRC_COMUNAS = {
   'Colina':        'prc-colina.geojson',
   'Huechuraba':    'prc-huechuraba.geojson',
   'Providencia':   'prc-providencia.geojson',
-  'Vitacura':      'prc-vitacura.geojson'
+  'Vitacura':      'prc-vitacura.geojson',
+  'Ñuñoa':         'prc-nunoa.geojson'
 };
 
 // Metadata para el pie del panel (fuente de datos, mostrada según la comuna activa)
@@ -73,7 +74,7 @@ var PRC_META = {
   },
   'La Florida': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
-    fuenteNormas: 'Texto Refundido Ordenanza Local PRC La Florida, sept. 2016 (incl. Mod. N°1-11) — normas transcritas solo para zonas con norma conjunta (AV, ED, ESP, RI, R, PEDC-3 y Sector Centro); zonas U-Vev/U-EC solo traen uso de suelo, falta el plano de edificación PRLF-1'
+    fuenteNormas: 'Texto Refundido Ordenanza Local PRC La Florida, sept. 2016 (incl. Mod. N°1-11). Normas de edificación completas en zonas con norma conjunta (AV, ED, ESP, RI, R, PEDC-3 y Sector Centro). Zonas U-Vev/U-EC ("Uso de suelo (sin norma de edificación)"): solo uso de suelo — el Geoportal MINVU no publica el Plano PRLF-1 (edificación) como capa separada'
   },
   'Colina': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
@@ -90,6 +91,10 @@ var PRC_META = {
   'Vitacura': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
     fuenteNormas: 'Ordenanza PRC Vitacura, Texto Refundido base ene. 2008, refundido ago. 2019 / mar. 2020 (vigente)'
+  },
+  'Ñuñoa': {
+    fuenteGeom:   'Geoportal MINVU / IDE Chile',
+    fuenteNormas: 'Ordenanza PRC Ñuñoa, Texto Refundido por Asesoría Urbana, actualizado abr. 2025, incl. Fallo Corte de Apelaciones (D.O. 26-11-2024) y Enmienda N°1 (vigente desde 17-12-2024). OJO: la geometría del Geoportal MINVU usa varios códigos de zona previos a la Modificación N°18 (2019) — ver notas por zona'
   }
 };
 
@@ -102,7 +107,8 @@ var PRC_FAMILIAS = {
   equipamiento: { label:'Equipamiento',            color:'#2D7A8C', orden:4 },
   verde:        { label:'Áreas verdes / Parques',  color:'#3CA06E', orden:5 },
   patrimonial:  { label:'Patrimonial',             color:'#8A6D3B', orden:6 },
-  otro:         { label:'Sin clasificar',          color:'#9A948A', orden:7 }
+  usosolo:      { label:'Uso de suelo (sin norma de edificación)', color:'#6E7B8B', orden:7 },
+  otro:         { label:'Sin clasificar',          color:'#9A948A', orden:8 }
 };
 
 /* ---------------------------------------------------------------------------
@@ -1230,6 +1236,50 @@ var PRC_NORMAS_LAFLORIDA = {
     nombre:'Zona Residencial Mixta - Departamental/Tobalaba', familia:'otro',
     tablas:[],
     notas:['Esta zona no aparece en el Texto Refundido de la Ordenanza (Septiembre 2016, incl. Mod. N°1-11) usado como fuente — debe corresponder a una modificación posterior no incluida en ese documento. No se transcribió su norma de edificación: verificar directamente con la Ordenanza vigente actualizada o con la DOM de La Florida antes de usar este dato para un terreno en esta zona.']
+  },
+
+  /* ---------- ZONAS DE USO DE SUELO SIN PLANO DE EDIFICACIÓN ---------- */
+  /* Cubren la mayor parte del territorio residencial/mixto de la comuna.
+     Se les da familia propia ("usosolo") en vez de dejarlas caer en "otro",
+     para que en el mapa se distingan de una zona genuinamente sin
+     clasificar (como ZRM-DT) — acá SÍ sabemos qué es la zona y su uso de
+     suelo permitido/prohibido (viene en el GeoJSON), solo falta la norma
+     de edificación (altura, CC, etc.) porque el Plano PRLF-1 no está en
+     el dataset del Geoportal MINVU que se usó como fuente. */
+  'U-VEV1': {
+    nombre:'Uso Preferente Vivienda y Equipamiento N°1', familia:'usosolo',
+    tablas:[],
+    notas:['Sin norma de edificación transcrita: el Plano PRLF-1 (áreas de edificación E-AB1...E-AA2, Art. 26) no está en el GeoJSON cargado, solo el Plano PRLF-2 de usos de suelo. Uso de suelo permitido/prohibido visible más abajo.']
+  },
+  'U-VEV2': {
+    nombre:'Uso Preferente Vivienda y Equipamiento N°2', familia:'usosolo',
+    tablas:[],
+    notas:['Sin norma de edificación transcrita: el Plano PRLF-1 (áreas de edificación E-AB1...E-AA2, Art. 26) no está en el GeoJSON cargado, solo el Plano PRLF-2 de usos de suelo. Uso de suelo permitido/prohibido visible más abajo.']
+  },
+  'U-VEV3': {
+    nombre:'Zona de Vivienda y Equipamiento Vecinal N°3', familia:'usosolo',
+    tablas:[],
+    notas:['Sin norma de edificación transcrita: el Plano PRLF-1 (áreas de edificación E-AB1...E-AA2, Art. 26) no está en el GeoJSON cargado, solo el Plano PRLF-2 de usos de suelo. Uso de suelo permitido/prohibido visible más abajo.']
+  },
+  'U-VEV4': {
+    nombre:'Zona de Vivienda y Equipamiento Vecinal N°4', familia:'usosolo',
+    tablas:[],
+    notas:['Sin norma de edificación transcrita: el Plano PRLF-1 (áreas de edificación E-AB1...E-AA2, Art. 26) no está en el GeoJSON cargado, solo el Plano PRLF-2 de usos de suelo. Uso de suelo permitido/prohibido visible más abajo.']
+  },
+  'U-EC1': {
+    nombre:'Zona de Equipamiento Comunal N°1', familia:'usosolo',
+    tablas:[],
+    notas:['Sin norma de edificación transcrita: el Plano PRLF-1 (áreas de edificación E-AB1...E-AA2, Art. 26) no está en el GeoJSON cargado, solo el Plano PRLF-2 de usos de suelo. Uso de suelo permitido/prohibido visible más abajo.']
+  },
+  'U-EC3': {
+    nombre:'Zona de Equipamiento Comunal N°3', familia:'usosolo',
+    tablas:[],
+    notas:['Sin norma de edificación transcrita: el Plano PRLF-1 (áreas de edificación E-AB1...E-AA2, Art. 26) no está en el GeoJSON cargado, solo el Plano PRLF-2 de usos de suelo. Uso de suelo permitido/prohibido visible más abajo.']
+  },
+  'U-EC4': {
+    nombre:'Zona de Equipamiento Comunal N°4', familia:'usosolo',
+    tablas:[],
+    notas:['Sin norma de edificación transcrita: el Plano PRLF-1 (áreas de edificación E-AB1...E-AA2, Art. 26) no está en el GeoJSON cargado, solo el Plano PRLF-2 de usos de suelo. Uso de suelo permitido/prohibido visible más abajo.']
   }
 };
 
@@ -1241,6 +1291,375 @@ function claveLaFlorida(p){
   if(z === 'ESP-2' && /^ESP-1/.test(p.nombre_zona || '')) return 'ESP-1';
   return z;
 }
+
+/* ---------------------------------------------------------------------------
+   ÑUÑOA — NORMAS URBANÍSTICAS POR ZONA
+   ---------------------------------------------------------------------------
+   Fuente: Ordenanza PRC de Ñuñoa, Texto Refundido por Asesoría Urbana
+   (actualizado abril 2025), incluye lo dispuesto en el Fallo de la Corte de
+   Apelaciones de Santiago (D.O. 26-11-2024) y la Enmienda N°1 (vigente desde
+   17-12-2024). Artículo 26 (normas de edificación y subdivisión por zona) y
+   Artículo 25 (usos de suelo).
+
+   ADVERTENCIA IMPORTANTE DE DATOS — la geometría del Geoportal MINVU/IDE
+   Chile para Ñuñoa usa varios códigos de zona ANTERIORES a la Modificación
+   N°18 (2019), que renombró o eliminó varias subzonas. La Ordenanza vigente
+   (texto refundido abril 2025) ya no las nombra así. Mapeo verificado contra
+   las notas al pie del propio texto refundido (Mod. 18, D.A. N°1.167 de
+   23-08-2019):
+
+     Código en el GeoJSON   →  Zona vigente equivalente
+     Z-2A, Z-2B              →  eliminadas, fusionadas en Z-2 (nota al pie 109)
+     Z-3B                    →  renombrada Z-3A (notas al pie 113-114)
+     Z-7A                    →  renombrada Z-5A (nota al pie 167)
+     Z-7B                    →  renombrada Z-5B (nota al pie 169)
+     Z-8A                    →  renombrada Z-6 (nota al pie 171)
+     Z-7 (zona genérica)     →  eliminada en 2019 (nota al pie 83); no está
+                                claro en qué zona quedó — usar con cautela
+
+   Se dejaron estos códigos antiguos como entradas propias en la tabla (en
+   vez de forzarlos silenciosamente a la zona nueva), cada uno con una nota
+   explicando la equivalencia, para que quede visible en el panel y Felipe
+   pueda decidir si confía en el mapeo o pide la geometría actualizada.
+
+   Los códigos AV, CD, EI y EN no tienen tabla propia en el Art. 26 (son
+   equipamiento/áreas verdes con norma en el PRMS o normas por declaratoria
+   patrimonial — ver notas de cada uno).
+   --------------------------------------------------------------------------- */
+var PRC_NORMAS_NUNOA = {
+  'Z-1': {
+    nombre:'Zona Z-1', familia:'alta',
+    tablas:[
+      { t:'A', label:'Base', dens:'—', predio:'500 m²', cc:4, cos:0.6,
+        rasante:'70°', pisos:15, metros:44, antejardin:'7 m', dist:'5 m (aislada sobre continua) · Art. 2.6.3 OGUC hasta 3p/9m · 5 m desde 4p/12m',
+        ados:'—', agrup:'Continuo, Aislado',
+        nota:'Altura continua 17,50 m / 6 pisos; aislada sobre continua sube hasta 25,50 m / 9 pisos y hasta el total de 44 m / 15 pisos con retranqueo de 10 m sobre la línea oficial. COS 0,6 en el continuo y 0,4 en los pisos superiores. Cuerpos salientes sobre antejardín: 1,5 m.' }
+    ],
+    notas:[]
+  },
+  'Z-1A': {
+    nombre:'Zona Z-1A', familia:'alta',
+    tablas:[
+      { t:'A', label:'Base', dens:'1.800 hab/ha', predio:'500 m²', cc:3.6, cos:0.6,
+        rasante:'70°', pisos:15, metros:44, antejardin:'7 m', dist:'5 m (aislada sobre continua) · Art. 2.6.3 OGUC hasta 3p/9m · 5 m desde 4p/12m',
+        ados:'—', agrup:'Continuo y aislado sobre continuo',
+        nota:'Altura continua 2 pisos / 7 m; aislada sobre continua hasta 13 pisos / 37 m, total 15 pisos / 44 m, con retranqueo de 10 m. COS 0,6 en el continuo y 0,4 en pisos superiores.' }
+    ],
+    notas:[]
+  },
+  'Z-1B': {
+    nombre:'Zona Z-1B', familia:'media',
+    tablas:[
+      { t:'A', label:'Base', dens:'1.600 hab/ha', predio:'500 m²', cc:3.2, cos:0.6,
+        rasante:'70°', pisos:10, metros:30, antejardin:'7 m', dist:'5 m (aislada sobre continua) · Art. 2.6.3 OGUC hasta 3p/9m · 5 m desde 4p/12m',
+        ados:'—', agrup:'Continuo y aislado sobre continuo',
+        nota:'Altura continua 2 pisos / 7 m; aislada sobre continua hasta 8 pisos / 23 m, total 10 pisos / 30 m, con retranqueo de 10 m. COS 0,6 en el continuo y 0,4 en pisos superiores.' }
+    ],
+    notas:[]
+  },
+  'Z-1C': {
+    nombre:'Zona Z-1C', familia:'alta',
+    tablas:[
+      { t:'A', label:'Uso Equipamiento — predio ≤ 700 m²', dens:'—', predio:'≤ 700 m²', cc:2.5, cos:0.7,
+        rasante:'70° (sobre altura de continuidad) · 60° (desde límite de zona a nivel de terreno)',
+        pisos:null, metros:7, antejardin:'No aplica', dist:'4 m (aislada sobre placa)',
+        ados:'40% (continuación de placa), no aplica al deslinde norte (Zona Típica)', agrup:'Continua, Aislada',
+        nota:'Placa continua/aislada sobre terreno hasta 7 m; sobre la placa se permite un cuerpo aislado adicional de hasta 10,5 m. Profundidad máx. de la placa continua: 50% desde deslindes laterales opuestos. Ochavo 4 m.' },
+      { t:'B', label:'Uso Equipamiento — predio > 700 m²', dens:'—', predio:'> 700 m²', cc:2, cos:0.5,
+        rasante:'70° (sobre altura de continuidad) · 60° (desde límite de zona a nivel de terreno)',
+        pisos:null, metros:7, antejardin:'No aplica', dist:'4 m (aislada sobre placa)',
+        ados:'40% (continuación de placa), no aplica al deslinde norte (Zona Típica)', agrup:'Continua, Aislada',
+        nota:'Mismas condiciones de altura/agrupamiento que la Tabla A, con CC y COS más bajos por ser predio mayor.' },
+      { t:'C', label:'Uso Residencial — predio ≤ 700 m²', dens:'1.200 hab/ha', predio:'≤ 700 m²', cc:2.5, cos:0.6,
+        rasante:'70° (sobre altura de continuidad) · 60° (desde límite de zona a nivel de terreno)',
+        pisos:null, metros:7, antejardin:'No aplica', dist:'4 m (aislada sobre placa)',
+        ados:'40% (continuación de placa), no aplica al deslinde norte (Zona Típica)', agrup:'Continua, Aislada',
+        nota:'Altura de continuidad 7 m; las demás normas (retiro sobre placa, ochavo, subterráneo) son las mismas que para Equipamiento en esta zona.' },
+      { t:'D', label:'Uso Residencial — predio > 700 m²', dens:'1.200 hab/ha', predio:'> 700 m²', cc:2, cos:0.5,
+        rasante:'70° (sobre altura de continuidad) · 60° (desde límite de zona a nivel de terreno)',
+        pisos:null, metros:7, antejardin:'No aplica', dist:'4 m (aislada sobre placa)',
+        ados:'40% (continuación de placa), no aplica al deslinde norte (Zona Típica)', agrup:'Continua, Aislada' }
+    ],
+    notas:[
+      'Zona pequeña junto a Av. Irarrázaval, colindante con Zona Típica al norte — trato especial de retornos en calles perpendiculares a Irarrázaval (placa de 7 m, distanciamiento 3,50 m al límite norte).',
+      'Adosamiento de subterráneo al deslinde lateral desde la L.O.: 80%, con ocupación de suelo en subterráneo también de 80%.'
+    ]
+  },
+  'Z-1D': {
+    nombre:'Zona Z-1D', familia:'media',
+    tablas:[
+      { t:'A', label:'Base', dens:'1.400 hab/ha', predio:'500 m²', cc:2.4, cos:0.6,
+        rasante:'70°', pisos:7, metros:21, antejardin:'7 m', dist:'5 m (aislada sobre continua) · Art. 2.6.3 OGUC hasta 3p/9m · 5 m desde 4p/12m',
+        ados:'—', agrup:'Continuo y aislado sobre continuo',
+        nota:'Altura continua 2 pisos / 7 m; aislada sobre continua hasta 5 pisos / 14 m, total 7 pisos / 21 m, con retranqueo de 10 m. COS 0,6 en el continuo y 0,4 en pisos superiores.' }
+    ],
+    notas:[]
+  },
+  'Z-2': {
+    nombre:'Zona Z-2', familia:'alta',
+    tablas:[
+      { t:'A', label:'Base', dens:'1.600 hab/ha', predio:'500 m²', cc:2, cos:0.5,
+        rasante:'60°', pisos:10, metros:28, antejardin:'7 m', dist:'5 m (4p/12m+) · Art. 2.6.3 OGUC (hasta 3p/9m)',
+        ados:'Según OGUC', agrup:'Aislado, pareado',
+        nota:'Cuerpos salientes sobre antejardín: 1,5 m. Conjuntos habitacionales >3 pisos deben destinar 30% del terreno a Área Libre de Esparcimiento (hasta 30% techado). Subsuelo: distanciamiento mínimo 2,5 m al deslinde salvo rampas; sin uso de subsuelo en antejardín de 5 m; ocupación de subsuelo máx. 70% del terreno.' }
+    ],
+    notas:['El GeoJSON del Geoportal MINVU trae además Z-2A y Z-2B como códigos separados; según la Modificación N°18 (2019) esas subzonas fueron eliminadas y se rigen actualmente por esta norma de Z-2 — ver entradas separadas Z-2A / Z-2B con la advertencia correspondiente.']
+  },
+  'Z-3': {
+    nombre:'Zona Z-3', familia:'media',
+    tablas:[
+      { t:'A', label:'Base', dens:'1.300 hab/ha', predio:'300 m²', cc:1.8, cos:0.5,
+        rasante:'60°', pisos:8, metros:23, antejardin:'7 m', dist:'5 m (4p/12m) · Art. 2.6.3 OGUC (hasta 3p/9m)',
+        ados:'Según OGUC', agrup:'Aislado, Pareado',
+        nota:'Cuerpos salientes sobre antejardín: 1,5 m.' }
+    ],
+    notas:[]
+  },
+  'Z-3A': {
+    nombre:'Zona Z-3A', familia:'media',
+    tablas:[
+      { t:'A', label:'Base', dens:'1.100 hab/ha', predio:'300 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:5, metros:14, antejardin:'7 m', dist:'5 m (4p/12m+) · Art. 2.6.3 OGUC (hasta 3p/9m)',
+        ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado, Pareado',
+        nota:'% máx. de pareo en el deslinde bajo altura de 7 m: 50%. Cuerpos salientes: 1,5 m.' },
+      { t:'B', label:'Terreno ≥ 2.000 m²', dens:'1.100 hab/ha', predio:'300 m²', cc:1.8, cos:0.5,
+        rasante:'60°', pisos:7, metros:20, antejardin:'7 m', dist:'5 m (4p/12m+) · Art. 2.6.3 OGUC (hasta 3p/9m)',
+        ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado, Pareado' }
+    ],
+    notas:['Antes de la Modificación N°18 (2019) esta zona se llamaba "Z-3B"; el GeoJSON del Geoportal MINVU puede traer ese código antiguo — ver entrada separada Z-3B.']
+  },
+  'Z-4': {
+    nombre:'Zona Z-4', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base', dens:'850 hab/ha', predio:'300 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:5, metros:14, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'5 m (4p+) · Art. 2.6.3 OGUC (hasta 3p/9m)', ados:'Según OGUC, retirado 3 m de la línea de edificación',
+        agrup:'Aislado',
+        nota:'Altura máxima 14 m medidos desde el nivel de solera (5 pisos máx.). En predios existentes menores a la subdivisión mínima, el COS puede subir hasta 60%.' }
+    ],
+    notas:[]
+  },
+  'Z-4m': {
+    nombre:'Zona Z-4m (modificado)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Uso Residencial — base', dens:'850 hab/ha', predio:'300 m²', cc:1, cos:0.4,
+        rasante:'60°', pisos:3, metros:8, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'5 m (4p+)', ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado, Pareado',
+        nota:'COS máx. sube a 0,6 en predios ≤ 300 m². % máx. de pareo en deslinde con altura de 6 m: 40%.' },
+      { t:'B', label:'Uso Residencial — terreno ≥ 1.000 m²', dens:'850 hab/ha', predio:'300 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:5, metros:14, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'5 m (4p+)', ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado, Pareado' },
+      { t:'C', label:'Uso Equipamiento', dens:'—', predio:'500 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:4, metros:null, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4 pisos)',
+        dist:'4 m (4+ pisos)', ados:'—', agrup:'Aislado' }
+    ],
+    notas:[]
+  },
+  'Z-4A': {
+    nombre:'Zona Z-4A', familia:'baja',
+    tablas:[
+      { t:'A', label:'Uso Residencial', dens:'850 hab/ha', predio:'300 m²', cc:2, cos:0.5,
+        rasante:'60°', pisos:null, metros:17.5, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'5 m (4p+)', ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado',
+        nota:'Altura máxima 17,50 m medidos desde el nivel de solera. El resto de las condiciones de subdivisión y edificación son las de la Zona Z-4 residencial.' }
+    ],
+    notas:[]
+  },
+  'Z-4B': {
+    nombre:'Zona Z-4B', familia:'media',
+    tablas:[
+      { t:'A', label:'Uso Residencial — < 1.000 m²', dens:'1.300 hab/ha', predio:'300 m²', cc:1.8, cos:0.4,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'4 m', ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado',
+        nota:'% máx. de pareo en deslinde con altura de 6 m: 40%. Conjuntos PPH: 35% del terreno como Área Libre de Esparcimiento (hasta 30% techado).' },
+      { t:'B', label:'Uso Residencial — 1.000 a 2.000 m²', dens:'1.300 hab/ha', predio:'300 m²', cc:1.8, cos:0.4,
+        rasante:'60°', pisos:5, metros:14, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'5 m', ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado' },
+      { t:'C', label:'Uso Residencial — sobre 2.000 m²', dens:'1.300 hab/ha', predio:'300 m²', cc:1.8, cos:0.4,
+        rasante:'60°', pisos:8, metros:22, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'Incremento de 1 m por cada piso sobre el 2°', ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado' },
+      { t:'D', label:'Uso Equipamiento', dens:'—', predio:'500 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:4, metros:null, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4 pisos)',
+        dist:'4 m (4+ pisos)', ados:'—', agrup:'Aislado' }
+    ],
+    notas:['Subsuelo: distanciamiento mínimo 2,5 m al deslinde salvo rampas; sin uso de subsuelo en antejardín de 5 m; ocupación de subsuelo máx. 70% del terreno.']
+  },
+  'Z-4C': {
+    nombre:'Zona Z-4C', familia:'baja',
+    tablas:[
+      { t:'A', label:'Uso Residencial', dens:'800 hab/ha', predio:'300 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:5, metros:14, antejardin:'5 m (1 a 3 pisos) · Según Art. 11 (4+ pisos)',
+        dist:'5 m (4p+) · Art. 2.6.3 OGUC (hasta 3p/9m)', ados:'Según OGUC, retirado 3 m de la línea de edificación',
+        agrup:'Aislado',
+        nota:'Cuerpos salientes máx. 1 m (en vez de 1,5 m). El resto de las condiciones son las mismas que la Zona Z-4.' }
+    ],
+    notas:['Subzonas Z-4C+R y Z-4C+RB: misma norma de edificación de Z-4C; "+R" agrega el uso "restaurantes" y "+RB" agrega "restaurantes" y "bares" al uso de suelo Comercio, que en Z-4C base están prohibidos.']
+  },
+  'Z-5': {
+    nombre:'Zona Z-5', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base', dens:'500 hab/ha', predio:'300 m²', cc:1.5, cos:0.6,
+        rasante:'Según Art. 2.6.3 OGUC', pisos:3, metros:8, antejardin:'5 m',
+        dist:'Art. 2.6.3 OGUC (hasta 3p/9m)', ados:'Según OGUC', agrup:'Aislado, Pareado',
+        nota:'Altura máx. de cierro en deslindes colindantes a Inmuebles de Conservación Histórica: 2,40 m con 70% de transparencia.' }
+    ],
+    notas:[]
+  },
+  'Z-5A': {
+    nombre:'Zona Z-5A', familia:'baja',
+    tablas:[
+      { t:'A', label:'Uso Residencial — terreno > 300 m²', dens:'500 hab/ha', predio:'300 m²', cc:1.5, cos:0.5,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m', dist:'Según Art. 2.6.3 OGUC',
+        ados:'Según Art. 2.6.2 OGUC', agrup:'Aislado, Pareado',
+        nota:'COS sube a 0,6 en terrenos ≤ 300 m². % máx. de pareo en deslinde con altura de 6 m: 40%. Cuerpos salientes máx. 1 m.' },
+      { t:'B', label:'Uso Equipamiento', dens:'—', predio:'500 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m', dist:'Según Art. 2.6.3 OGUC',
+        ados:'Según Art. 2.6.2 OGUC', agrup:'Aislado',
+        nota:'% máx. de pareo en deslinde con altura de 6 m: 40%. Cuerpos salientes máx. 1 m.' }
+    ],
+    notas:['Espacios en subsuelo (Residencial y Equipamiento) deben cumplir el Art. 8° de la Ordenanza Local. Zona conocida como "Z-7A" antes de la Modificación N°18 (2019) — ver entrada separada Z-7A.']
+  },
+  'Z-5B': {
+    nombre:'Zona Z-5B', familia:'baja',
+    tablas:[
+      { t:'A', label:'Uso Residencial', dens:'1.000 hab/ha', predio:'300 m²', cc:1.5, cos:0.6,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m', dist:'Según Art. 2.6.3 OGUC',
+        ados:'Según Art. 2.6.2 OGUC', agrup:'Aislado, Pareado',
+        nota:'% máx. de pareo en el deslinde: 40%. Cuerpos salientes máx. 1 m.' },
+      { t:'B', label:'Uso Equipamiento', dens:'—', predio:'500 m²', cc:1.5, cos:0.5,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m', dist:'Según Art. 2.6.3 OGUC',
+        ados:'Según Art. 2.6.2 OGUC', agrup:'Aislado',
+        nota:'% máx. de pareo en el deslinde: 40%. Cuerpos salientes máx. 1 m.' }
+    ],
+    notas:['Espacios en subsuelo (Residencial y Equipamiento) deben cumplir el Art. 8° de la Ordenanza Local. Zona conocida como "Z-7B" antes de la Modificación N°18 (2019) — ver entrada separada Z-7B.']
+  },
+  'Z-6': {
+    nombre:'Zona Z-6 · Equipamiento Deportivo Recreativo Exclusivo', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Base', dens:'—', predio:'6.500 m²', cc:1, cos:0.2,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m (1 a 3 pisos) · 7 m (4 pisos y altura 12 m o más)',
+        dist:'—', ados:'—', agrup:'Aislado',
+        nota:'Deslindes con zona residencial: franja de 10 m arborizada.' }
+    ],
+    notas:['Zona conocida como "Z-8A" antes de la Modificación N°18 (2019) — ver entrada separada Z-8A.']
+  },
+  'ZI-1': {
+    nombre:'Zona ZI-1', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Base', dens:'—', predio:'5.000 m²', cc:1.5, cos:0.6,
+        rasante:'60° (aplicada sobre nivel de suelo)', pisos:5, metros:15, antejardin:'7 m',
+        dist:'5 m', ados:'—', agrup:'Aislado' }
+    ],
+    notas:['Zona industrial inofensiva — Art. 25 permite todas las actividades productivas y equipamiento, salvo esparcimiento tipo parque zoológico/casinos, salud (cementerios/crematorios) y varios rubros de comercio de gran escala (mall, megamercados, mercados, discotecas, etc.).']
+  },
+  'ZR-1': {
+    nombre:'Zona ZR-1 · Restricción ferroviaria y de canales', familia:'verde',
+    tablas:[],
+    notas:[
+      'Comprende la restricción ferroviaria de la ex-Estación Ñuñoa (recinto, bodegas, franja de tráfico de 20 m y faja no edificable de 30 m en el lado poniente) — solo se permiten instalaciones propias de la vía férrea (hoy Metro).',
+      'Incluye también las fajas de protección de los canales San Carlos y San Miguel: uso de suelo permitido es Área Verde (franja de 15 m desde el eje del Canal San Carlos hacia el interior, más servidumbre de 8 m centrada en su eje; servidumbre de 3 m centrada en el eje del Canal San Miguel). Cualquier obra cercana que pueda desestabilizar el canal requiere aprobación de la Dirección de Obras Hidráulicas del MOP o la SEREMI MOP.'
+    ]
+  },
+
+  /* ---------- CÓDIGOS ANTERIORES A LA MODIFICACIÓN N°18 (2019) ---------- */
+  /* El Geoportal MINVU/IDE Chile aún puede traer estos códigos "viejos".
+     Se dejan como entradas propias (en vez de forzarlos a la zona nueva)
+     para que la equivalencia quede visible en el panel. */
+  'Z-2A': {
+    nombre:'Zona Z-2A (código anterior a Mod. N°18, 2019)', familia:'alta',
+    tablas:[
+      { t:'A', label:'Se rige por la norma vigente de Z-2', dens:'1.600 hab/ha', predio:'500 m²', cc:2, cos:0.5,
+        rasante:'60°', pisos:10, metros:28, antejardin:'7 m', dist:'5 m (4p/12m+) · Art. 2.6.3 OGUC (hasta 3p/9m)',
+        ados:'Según OGUC', agrup:'Aislado, pareado',
+        nota:'Según la Modificación N°18 (2019, D.A. N°1.167) las subzonas Z-2A y Z-2B fueron eliminadas y absorbidas por la Zona Z-2. Se muestra la norma vigente de Z-2 como referencia, pero conviene confirmar el límite exacto del polígono con la DOM antes de usarlo para cabida.' }
+    ],
+    notas:['Código presente en la geometría del Geoportal MINVU pero ya no existe en el texto refundido de abril 2025 de la Ordenanza.']
+  },
+  'Z-2B': {
+    nombre:'Zona Z-2B (código anterior a Mod. N°18, 2019)', familia:'alta',
+    tablas:[
+      { t:'A', label:'Se rige por la norma vigente de Z-2', dens:'1.600 hab/ha', predio:'500 m²', cc:2, cos:0.5,
+        rasante:'60°', pisos:10, metros:28, antejardin:'7 m', dist:'5 m (4p/12m+) · Art. 2.6.3 OGUC (hasta 3p/9m)',
+        ados:'Según OGUC', agrup:'Aislado, pareado',
+        nota:'Según la Modificación N°18 (2019, D.A. N°1.167) las subzonas Z-2A y Z-2B fueron eliminadas y absorbidas por la Zona Z-2. Se muestra la norma vigente de Z-2 como referencia, pero conviene confirmar el límite exacto del polígono con la DOM antes de usarlo para cabida.' }
+    ],
+    notas:['Código presente en la geometría del Geoportal MINVU pero ya no existe en el texto refundido de abril 2025 de la Ordenanza.']
+  },
+  'Z-3B': {
+    nombre:'Zona Z-3B (código anterior a Mod. N°18, 2019 · hoy Z-3A)', familia:'media',
+    tablas:[
+      { t:'A', label:'Se rige por la norma vigente de Z-3A', dens:'1.100 hab/ha', predio:'300 m²', cc:1.5, cos:0.4,
+        rasante:'60°', pisos:5, metros:14, antejardin:'7 m', dist:'5 m (4p/12m+) · Art. 2.6.3 OGUC (hasta 3p/9m)',
+        ados:'Según OGUC, retirado 3 m de la línea de edificación', agrup:'Aislado, Pareado',
+        nota:'La Modificación N°18 (2019, D.A. N°1.167) renombró la antigua "Zona Z-3B" como "Zona Z-3A" (y eliminó la antigua Z-3A). Tabla equivalente a 1.500 m² sube CC a 1,8 y altura a 7 pisos/20 m — ver zona Z-3A en este panel.' }
+    ],
+    notas:['Código presente en la geometría del Geoportal MINVU pero renombrado en el texto refundido de abril 2025 de la Ordenanza.']
+  },
+  'Z-7': {
+    nombre:'Zona Z-7 (código eliminado en Mod. N°18, 2019 — sin equivalencia clara)', familia:'otro',
+    tablas:[],
+    notas:[
+      'Esta zona "Z-7" (creada por la Modificación N°14 de 2016) fue eliminada por la Modificación N°18 (2019, D.A. N°1.167) según la nota al pie del propio texto refundido, pero la Ordenanza no deja explícito en qué zona quedó absorbida el área.',
+      'No se transcribió una norma de reemplazo para evitar dar un dato incorrecto — verificar directamente con la Dirección de Obras Municipales de Ñuñoa el estado actual de estos polígonos antes de usarlos para cualquier cálculo de cabida.'
+    ]
+  },
+  'Z-7A': {
+    nombre:'Zona Z-7A (código anterior a Mod. N°18, 2019 · hoy Z-5A)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Se rige por la norma vigente de Z-5A · Uso Residencial', dens:'500 hab/ha', predio:'300 m²', cc:1.5, cos:0.5,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m', dist:'Según Art. 2.6.3 OGUC',
+        ados:'Según Art. 2.6.2 OGUC', agrup:'Aislado, Pareado',
+        nota:'La Modificación N°18 (2019, D.A. N°1.167) renombró "Zona Z-7A" como "Zona Z-5A". Ver esa zona en este panel para la tabla completa (incluye uso Equipamiento).' }
+    ],
+    notas:['Código presente en la geometría del Geoportal MINVU pero renombrado en el texto refundido de abril 2025 de la Ordenanza.']
+  },
+  'Z-7B': {
+    nombre:'Zona Z-7B (código anterior a Mod. N°18, 2019 · hoy Z-5B)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Se rige por la norma vigente de Z-5B · Uso Residencial', dens:'1.000 hab/ha', predio:'300 m²', cc:1.5, cos:0.6,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m', dist:'Según Art. 2.6.3 OGUC',
+        ados:'Según Art. 2.6.2 OGUC', agrup:'Aislado, Pareado',
+        nota:'La Modificación N°18 (2019, D.A. N°1.167) renombró "Zona Z-7B" como "Zona Z-5B". Ver esa zona en este panel para la tabla completa (incluye uso Equipamiento).' }
+    ],
+    notas:['Código presente en la geometría del Geoportal MINVU pero renombrado en el texto refundido de abril 2025 de la Ordenanza.']
+  },
+  'Z-8A': {
+    nombre:'Zona Z-8A (código anterior a Mod. N°18, 2019 · hoy Z-6)', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Se rige por la norma vigente de Z-6', dens:'—', predio:'6.500 m²', cc:1, cos:0.2,
+        rasante:'60°', pisos:3, metros:9, antejardin:'5 m (1-3 pisos) · 7 m (4 pisos y altura 12 m o más)',
+        dist:'—', ados:'—', agrup:'Aislado',
+        nota:'La Modificación N°18 (2019, D.A. N°1.167) renombró "Zona Z-8A" como "Zona Z-6" (Equipamiento Deportivo Recreativo Exclusivo). Ver esa zona en este panel.' }
+    ],
+    notas:['Código presente en la geometría del Geoportal MINVU pero renombrado en el texto refundido de abril 2025 de la Ordenanza.']
+  },
+
+  /* ---------- ÁREAS VERDES Y EQUIPAMIENTO SIN TABLA PROPIA EN ART. 26 ---------- */
+  'AV': {
+    nombre:'Zona de Áreas Verdes', familia:'verde',
+    tablas:[],
+    notas:['Sin norma de edificación propia en el Art. 26 — uso de suelo exclusivo Área Verde; todos los demás usos quedan prohibidos según el propio GeoJSON (campo "uso prohibido").']
+  },
+  'CD': {
+    nombre:'Zona de Centro Deportivo', familia:'equipamiento',
+    tablas:[],
+    notas:['Código de equipamiento deportivo existente que no aparece con tabla propia en el Art. 24-26 del texto refundido usado como fuente (abril 2025) — probablemente instalaciones singularizadas de forma puntual. Verificar la norma aplicable directamente con la DOM de Ñuñoa antes de estimar cabida.']
+  },
+  'EI': {
+    nombre:'Zona de Equipamiento Intercomunal', familia:'equipamiento',
+    tablas:[],
+    notas:['Equipamiento de escala intercomunal (hospitales, grandes establecimientos), normado por el Plan Regulador Metropolitano de Santiago (PRMS) — Título 5, Art. 5.6 — y no por la Ordenanza comunal. No se transcribió tabla; consultar la Ordenanza del PRMS o la DOM de Ñuñoa para el predio específico.']
+  },
+  'EN': {
+    nombre:'Estadio Nacional — Equipamiento Intercomunal PRMS', familia:'patrimonial',
+    tablas:[
+      { t:'A', label:'Norma como Monumento Histórico (MH1, Art. 31)', dens:'—', predio:'2.500 m²', cc:2.5, cos:0.2,
+        rasante:'—', pisos:10, metros:30, antejardin:'15 m', dist:'—', ados:'—', agrup:'Aislada',
+        nota:'El Estadio Nacional está declarado Monumento Histórico (Decreto exento N°710 del Ministerio de Educación, 11-09-2003, D.O. 17-10-2003) y se rige por la ficha MH1 del Art. 31 de la Ordenanza, que remite además a todos los usos del Art. 5.2.4.1 del PRMS. Estacionamientos: 1 cada 25 personas.' }
+    ],
+    notas:['Sitio de uso mixto Área Verde/Equipamiento Recreacional y Deportivo, con hasta 20% de la superficie del predio disponible para otros usos de equipamiento según el detalle del Art. 31.']
+  }
+};
 
 /* ---------------------------------------------------------------------------
    LO BARNECHEA — normas embebidas en el propio GeoJSON
@@ -1395,6 +1814,11 @@ function normasDe(properties){
     // Florida traen su propio "/" como parte del código (ej. "R-1/AV3"), no
     // como separador uso/edificación.
     return PRC_NORMAS_LAFLORIDA[claveLaFlorida(properties)] || null;
+  }
+  if(currentComuna === 'Ñuñoa'){
+    // Igual que La Florida: los códigos de Ñuñoa no usan "/" como separador
+    // uso/edificación, así que se busca la zona completa tal cual viene.
+    return PRC_NORMAS_NUNOA[(properties.zona || '').toString()] || null;
   }
   // Comuna con geometría y usos de suelo cargados, pero normas urbanísticas
   // aún sin transcribir de su Ordenanza. renderZona() ya maneja este caso
@@ -2197,7 +2621,7 @@ function renderZona(feature){
   }
 
   // Tablas de normas
-  var etiquetaNorma = (currentComuna === 'La Florida') ? p.zona : sp.edif;
+  var etiquetaNorma = (currentComuna === 'La Florida' || currentComuna === 'Ñuñoa') ? p.zona : sp.edif;
   html += '<div class="prc-section-lbl">Normas urbanísticas · ' + esc(etiquetaNorma) + '</div>';
   if(!n){
     html += '<div style="font-size:12px;color:var(--text-faint);font-style:italic">Sin normas cargadas para esta zona de edificación.</div>';
