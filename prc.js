@@ -78,7 +78,7 @@ var PRC_META = {
   },
   'Colina': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
-    fuenteNormas: 'Aún no transcritas — solo geometría y usos de suelo por ahora'
+    fuenteNormas: 'Ordenanza Local PRC Colina, promulgada por Decreto Alcaldicio E-629/2010, vigente desde el 15-02-2010 (Capítulo IV, Arts. 4.2.1 a 4.2.36, y Art. 3.20 sobre Zonas de Conservación Histórica)'
   },
   'Huechuraba': {
     fuenteGeom:   'Geoportal MINVU / IDE Chile',
@@ -105,10 +105,12 @@ var PRC_FAMILIAS = {
   media:        { label:'Edificación Media',       color:'#E8833A', orden:2 },
   baja:         { label:'Edificación Baja',        color:'#D4AF37', orden:3 },
   equipamiento: { label:'Equipamiento',            color:'#2D7A8C', orden:4 },
-  verde:        { label:'Áreas verdes / Parques',  color:'#3CA06E', orden:5 },
-  patrimonial:  { label:'Patrimonial',             color:'#8A6D3B', orden:6 },
-  usosolo:      { label:'Uso de suelo (sin norma de edificación)', color:'#6E7B8B', orden:7 },
-  otro:         { label:'Sin clasificar',          color:'#9A948A', orden:8 }
+  productiva:   { label:'Actividades productivas', color:'#6B5B95', orden:5 },
+  verde:        { label:'Áreas verdes / Parques',  color:'#3CA06E', orden:6 },
+  patrimonial:  { label:'Patrimonial',             color:'#8A6D3B', orden:7 },
+  riesgo:       { label:'Áreas de riesgo / restricción', color:'#9E4A3E', orden:8 },
+  usosolo:      { label:'Uso de suelo (sin norma de edificación)', color:'#6E7B8B', orden:9 },
+  otro:         { label:'Sin clasificar',          color:'#9A948A', orden:10 }
 };
 
 /* ---------------------------------------------------------------------------
@@ -1662,6 +1664,524 @@ var PRC_NORMAS_NUNOA = {
 };
 
 /* ---------------------------------------------------------------------------
+   COLINA — normas transcritas del Capítulo IV de la Ordenanza
+   ---------------------------------------------------------------------------
+   Fuente: Ordenanza Local PRC de Colina, promulgada por Decreto Alcaldicio
+   E-629/2010 (vigente desde el 15-02-2010). Artículos 4.2.1 a 4.2.36, más el
+   Art. 3.20 (Zonas de Conservación Histórica).
+
+   Colina no tiene tablas de densificación como Las Condes: cada zona trae UNA
+   norma base. Donde la Ordenanza define una segunda norma alternativa (paños
+   menores en B1b, industrias molestas en C1, proyectos de mayor intensidad en
+   C2, predios DL 3.516 en AC) se agrega como tabla B/C/D.
+
+   Ojo con los códigos: el GeoJSON del Geoportal escribe "A10-a" y la
+   Ordenanza "A10a". claveColina() normaliza guiones y espacios.
+   --------------------------------------------------------------------------- */
+var PRC_NORMAS_COLINA = {
+
+  /* ---------- 1. ZONAS RESIDENCIALES MIXTAS (Art. 4.2.1 a 4.2.14) ---------- */
+
+  'A1': {
+    nombre:'Zona Residencial Mixta 1 · Colina – Esmeralda', familia:'alta',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.1)', dens:'500 hab/há', predio:'2.500 m²',
+        cc:3.0, cos:0.3, rasante:'O.G.U.C.', pisos:12, metros:null,
+        antejardin:'10 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Densidad bruta mínima: 150 hab/há. Cierros: 60% mínimo de transparencia a la calle, 2 m de altura máxima.' }
+    ],
+    notas:[
+      'Los proyectos de una vivienda y/o equipamiento en predio existente, o su ampliación, pueden mantener el antejardín y el tamaño predial existentes a la entrada en vigencia del Plan.',
+      'Los proyectos con uso de suelo equipamiento deben enfrentar una vía existente o proyectada de ancho de faja vial igual o superior a 20 m.'
+    ]
+  },
+  'A2': {
+    nombre:'Zona Residencial Mixta 2 · Colina – Esmeralda', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.2)', dens:'150 hab/há', predio:'200 m²',
+        cc:0.5, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado, continuo',
+        nota:'Densidad bruta mínima: 85 hab/há. Cierros: 60% mínimo de transparencia a la calle, 2 m de altura máxima.' }
+    ]
+  },
+  'A3': {
+    nombre:'Zona Residencial Mixta 3 · Colina – Esmeralda', familia:'media',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.3)', dens:'300 hab/há', predio:'180 m²',
+        cc:0.5, cos:0.4, rasante:'O.G.U.C.', pisos:4, metros:null,
+        antejardin:'2 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado, continuo',
+        nota:'Densidad bruta mínima: 150 hab/há. Cierros: 60% mínimo de transparencia a la calle, 2 m de altura máxima.' }
+    ]
+  },
+  'A4': {
+    nombre:'Zona Residencial Mixta 4 · Colina – Esmeralda', familia:'media',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.4)', dens:'150 hab/há', predio:'200 m²',
+        cc:0.6, cos:0.4, rasante:'O.G.U.C.', pisos:4, metros:null,
+        antejardin:'4 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 85 hab/há. Cierros: 60% mínimo de transparencia a la calle, 2 m de altura máxima.' }
+    ],
+    notas:['Los proyectos de loteo y/o urbanización en esta zona deben acompañar un Estudio de Impacto Urbano (Art. 3.14), cuyo informe favorable es requisito previo al permiso.']
+  },
+  'A5': {
+    nombre:'Zona Residencial Mixta 5 · Colina – Esmeralda', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.5)', dens:'100 hab/há', predio:'250 m²',
+        cc:0.5, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'5 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 70 hab/há. Cierros: 60% mínimo de transparencia a la calle, 2 m de altura máxima.' }
+    ],
+    notas:['Los proyectos de loteo y/o urbanización en esta zona deben acompañar un Estudio de Impacto Urbano (Art. 3.14), cuyo informe favorable es requisito previo al permiso.']
+  },
+  'A6': {
+    nombre:'Zona Residencial Mixta 6 · Colina – Esmeralda', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.6)', dens:'75 hab/há', predio:'350 m²',
+        cc:0.5, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'5 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 50 hab/há. Solo vivienda unifamiliar (no admite edificación colectiva). Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:['Los proyectos de loteo y/o urbanización en esta zona deben acompañar un Estudio de Impacto Urbano (Art. 3.14), cuyo informe favorable es requisito previo al permiso.']
+  },
+  'A7': {
+    nombre:'Zona Residencial Mixta 7 · Colina – Esmeralda', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.7)', dens:'60 hab/há', predio:'450 m²',
+        cc:0.5, cos:0.3, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'5 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Densidad bruta mínima: 50 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:['Los proyectos de loteo y/o urbanización en esta zona deben acompañar un Estudio de Impacto Urbano (Art. 3.14), cuyo informe favorable es requisito previo al permiso.']
+  },
+  'A8': {
+    nombre:'Zona Residencial Mixta 8 · Colina – Esmeralda', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.8)', dens:'50 hab/há', predio:'500 m²',
+        cc:0.5, cos:0.3, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'5 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Densidad bruta mínima: 40 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:['Los proyectos de loteo y/o urbanización en esta zona deben acompañar un Estudio de Impacto Urbano (Art. 3.14), cuyo informe favorable es requisito previo al permiso.']
+  },
+  'A9': {
+    nombre:'Zona Residencial Mixta 9 · Colina – Esmeralda', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.9)', dens:'16 hab/há', predio:'2.500 m²',
+        cc:0.2, cos:0.15, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'5 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Densidad bruta mínima: 16 hab/há (igual a la máxima). Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ]
+  },
+  'A10a': {
+    nombre:'Zona Residencial Mixta 10a · Las Canteras (Sector 8)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.10.1)', dens:'150 hab/há', predio:'200 m²',
+        cc:0.6, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 85 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ]
+  },
+  'A10b': {
+    nombre:'Zona Residencial Mixta 10b – Condicionada · Las Canteras (Sector 8)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.10.2)', dens:'150 hab/há', predio:'200 m²',
+        cc:0.6, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 85 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:['Zona condicionada: los proyectos de loteo y/o urbanización deben acompañar un Estudio de Impacto Urbano según el Art. 3.15, cuyo informe favorable es requisito previo al permiso.']
+  },
+  'A11a': {
+    nombre:'Zona Residencial Mixta 11a · Casas de Chacabuco (Sector 2)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.11.1)', dens:'120 hab/há', predio:'250 m²',
+        cc:0.5, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 70 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ]
+  },
+  'A11b': {
+    nombre:'Zona Residencial Mixta 11b – Condicionada · Casas de Chacabuco (Sector 2)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.11.2)', dens:'120 hab/há', predio:'250 m²',
+        cc:0.5, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 70 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:['Zona condicionada: los proyectos de loteo y/o urbanización deben acompañar un Estudio de Impacto Urbano según el Art. 3.15, cuyo informe favorable es requisito previo al permiso.']
+  },
+  'A12a': {
+    nombre:'Zona Residencial Mixta 12a · Quilapilún (Sector 4)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.12.1)', dens:'100 hab/há', predio:'300 m²',
+        cc:0.6, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 70 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ]
+  },
+  'A12b': {
+    nombre:'Zona Residencial Mixta 12b – Condicionada · Quilapilún (Sector 4)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.12.2)', dens:'100 hab/há', predio:'300 m²',
+        cc:0.5, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Densidad bruta mínima: 70 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:[
+      'Zona condicionada según el Art. 4.3 punto 4.1 del PRMS.',
+      'Los proyectos de loteo y/o urbanización deben acompañar un Estudio de Impacto Urbano según el Art. 3.15, cuyo informe favorable es requisito previo al permiso.'
+    ]
+  },
+  'A13a': {
+    nombre:'Zona Residencial Mixta 13a · El Colorado – Liray – San José (Sectores 3, 5 y 6)', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.13.1)', dens:'70 hab/há', predio:'400 m²',
+        cc:0.4, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Densidad bruta mínima: 20 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ]
+  },
+  'A13b': {
+    nombre:'Zona Residencial Mixta 13b – Condicionada · El Colorado – Liray – San José', familia:'baja',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.13.2)', dens:'70 hab/há', predio:'400 m²',
+        cc:0.4, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Densidad bruta mínima: 20 hab/há. Solo vivienda unifamiliar. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:[
+      'Zona condicionada según el Art. 4.3 punto 4.1 del PRMS.',
+      'Los proyectos de loteo y/o urbanización deben acompañar un Estudio de Impacto Urbano según el Art. 3.15, cuyo informe favorable es requisito previo al permiso.'
+    ]
+  },
+  'AC': {
+    nombre:'Zona Residencial Mixta Condicionada · Santa Elena, Santa Filomena, Chicureo y Chamicero – Pan de Azúcar', familia:'media',
+    tablas:[
+      { t:'A', label:'Uso residencial (Art. 4.2.14)', dens:'100 hab/há', predio:'300 m²',
+        cc:1.2, cos:0.4, rasante:'O.G.U.C.', pisos:null, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Altura máxima según rasante (la Ordenanza no fija un número de pisos). Densidad bruta mínima: 70 hab/há. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' },
+      { t:'B', label:'Uso equipamiento', dens:'—', predio:'500 m²',
+        cc:1.2, cos:0.6, rasante:'O.G.U.C.', pisos:null, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Altura máxima según rasante. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' },
+      { t:'C', label:'Uso actividades productivas', dens:'—', predio:'800 m²',
+        cc:1.2, cos:0.3, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Solo industrias inofensivas. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' },
+      { t:'D', label:'Predios DL 3.516 ya urbanizados', dens:'16 hab/há', predio:'2.500 m²',
+        cc:null, cos:null, rasante:'O.G.U.C.', pisos:null, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Los proyectos acogidos al DL 3.516 de subdivisión de predios rústicos que ya contaban con urbanización al aprobarse el Plan pueden optar a predio mínimo de 2.500 m² con densidad máxima de 16 hab/há, sujetos igualmente al procedimiento del Art. 3.15.' }
+    ],
+    notas:[
+      'Solo se aprueban loteos que cumplan: (1) terrenos que conformen un solo paño de superficie no inferior a 300 há; (2) informe favorable de la Dirección de Obras Municipales; (3) al menos 2% de la superficie loteada con densidad bruta de 300 a 400 hab/há y al menos 3% con densidad de 401 a 500 hab/há; (4) 5% de la superficie destinada a actividades productivas y/o de servicios inofensivas generadoras de empleo.',
+      'Todos los proyectos requieren Estudio de Impacto Urbano según el Art. 3.15. Los que ya contaban con EIU aprobado por la SEREMI MINVU R.M. antes de la vigencia del PRC deben observar las condicionantes de ese informe.',
+      'Los terrenos en condición de retazo o predio residual que no alcancen las 300 há pueden acogerse al mismo procedimiento del Art. 3.15.'
+    ]
+  },
+  'AC3': {
+    nombre:'Zona Residencial Mixta Condicionada AC-3 · Chicureo', familia:'media',
+    tablas:[
+      { t:'A', label:'Uso residencial (Art. 4.2.14)', dens:'100 hab/há', predio:'300 m²',
+        cc:1.2, cos:0.4, rasante:'O.G.U.C.', pisos:null, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado',
+        nota:'Altura máxima según rasante. Densidad bruta mínima: 70 hab/há. Cierros: 60% mínimo de transparencia, 2 m de altura máxima.' },
+      { t:'B', label:'Uso equipamiento', dens:'—', predio:'500 m²',
+        cc:1.2, cos:0.6, rasante:'O.G.U.C.', pisos:null, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Altura máxima según rasante.' },
+      { t:'C', label:'Uso actividades productivas', dens:'—', predio:'800 m²',
+        cc:1.2, cos:0.3, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'3 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Solo industrias inofensivas.' }
+    ],
+    notas:[
+      'Corresponde al sector 3 (Chicureo) de la Zona Residencial Mixta Condicionada AC del Art. 4.2.14: mismas normas y mismas condiciones especiales que la zona AC.',
+      'Solo se aprueban loteos sobre un paño único de al menos 300 há, con informe favorable de la DOM, cuotas de densidad (2% entre 300 y 400 hab/há; 3% entre 401 y 500 hab/há) y 5% de la superficie destinada a actividades productivas inofensivas.',
+      'Requiere Estudio de Impacto Urbano según el Art. 3.15.'
+    ]
+  },
+
+  /* ---------- 2. ZONAS DE EQUIPAMIENTO (Art. 4.2.15 a 4.2.19) ---------- */
+
+  'B1a': {
+    nombre:'Zona Equipamiento Metropolitano Condicionado – a', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.15.1)', dens:'—', predio:'2.500 m²',
+        cc:2.0, cos:0.4, rasante:'O.G.U.C.', pisos:12, metros:null,
+        antejardin:'10 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Cierros: 100% de transparencia hacia la calle, 2 m de altura máxima. Se prohíbe expresamente la vivienda, cementerios, disposición transitoria o final de residuos, cárceles y similares.' }
+    ],
+    notas:[
+      'Zona condicionada según el Art. 10° Transitorio del PRMS. Solo se aprueban proyectos que comprendan terrenos de superficie no inferior a 20 há en un solo paño.',
+      'Requiere Estudio de Impacto Urbano con informe favorable previo al permiso, según el Art. 3.16.',
+      'Los proyectos con uso equipamiento deben enfrentar una vía existente o proyectada de ancho de faja vial igual o superior a 40 m.',
+      'Arborización obligatoria: mínimo 162 especies arbóreas/há en una faja de ancho mínimo de 15 m medidos al deslinde con áreas silvoagropecuarias.'
+    ]
+  },
+  'B1b': {
+    nombre:'Zona Equipamiento Metropolitano Condicionado – b', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.15.2)', dens:'—', predio:'2.500 m²',
+        cc:2.0, cos:0.4, rasante:'O.G.U.C.', pisos:12, metros:null,
+        antejardin:'10 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Cierros: 100% de transparencia hacia la calle, 2 m de altura máxima. Aplica a paños de al menos 20 há.' },
+      { t:'B', label:'Paños menores originados en loteos ya aprobados', dens:'16 hab/há', predio:'2.500 m²',
+        cc:1.5, cos:0.6, rasante:'O.G.U.C.', pisos:3, metros:null,
+        antejardin:'10 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Norma alternativa para paños de menos de 20 há que se hayan originado en parcelaciones, subdivisiones y/o loteos aprobados con anterioridad a la entrada en vigencia del Plan.' }
+    ],
+    notas:[
+      'Zona condicionada según el Art. 10° Transitorio del PRMS. Requiere Estudio de Impacto Urbano con informe favorable, según el Art. 3.16.',
+      'Los proyectos con uso equipamiento deben enfrentar una vía de ancho de faja vial igual o superior a 40 m.',
+      'Arborización obligatoria: mínimo 162 especies arbóreas/há en faja de al menos 15 m al deslinde con áreas silvoagropecuarias.',
+      'OJO: el articulado de esta zona es contradictorio — lista "Residencial: vivienda; hospedaje" entre los usos permitidos y, en el párrafo siguiente, prohíbe expresamente la vivienda. Confirmar con la DOM antes de asumir uso residencial.'
+    ]
+  },
+  'B2': {
+    nombre:'Zona Equipamiento y Servicios', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.16)', dens:'150 hab/há', predio:'1.000 m²',
+        cc:1.5, cos:0.6, rasante:'O.G.U.C.', pisos:3, metros:null,
+        antejardin:'10 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado, pareado, continuo',
+        nota:'Cierros: 60% mínimo de transparencia, 1,2 m de altura máxima.' }
+    ],
+    notas:[
+      'En las zonas B2 emplazadas en áreas urbanas, la ampliación de una vivienda existente o la edificación y/o ampliación de equipamiento en predio existente pueden mantener el antejardín y el tamaño predial existentes, sin que se considere densificación.',
+      'Los proyectos con uso equipamiento deben enfrentar una vía existente o proyectada de ancho de faja vial igual o superior a 20 m.'
+    ]
+  },
+  'B3': {
+    nombre:'Zona Equipamiento e Infraestructura', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.17)', dens:'—', predio:'2.000 m²',
+        cc:1.0, cos:0.3, rasante:'O.G.U.C.', pisos:3, metros:null,
+        antejardin:'7 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Cierros: 100% de transparencia, 2 m de altura máxima. Se prohíbe expresamente la vivienda. Admite infraestructura de transporte: terminales de transporte y de transferencia de pasajeros y carga, bodegas y estacionamientos asociados.' }
+    ],
+    notas:['Los proyectos con uso equipamiento deben enfrentar una vía existente o proyectada de ancho de faja vial igual o superior a 20 m.']
+  },
+  'B4': {
+    nombre:'Zona Equipamiento Local', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.18)', dens:'70 hab/há', predio:'500 m²',
+        cc:0.8, cos:0.4, rasante:'O.G.U.C.', pisos:2, metros:null,
+        antejardin:'5 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Admite vivienda y hospedaje, y equipamiento de toda clase. Cierros: 60% de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:['Los proyectos con uso equipamiento deben enfrentar una vía existente o proyectada de ancho de faja vial igual o superior a 15 m.']
+  },
+  'B5': {
+    nombre:'Zona Equipamiento de Seguridad', familia:'equipamiento',
+    tablas:[
+      { t:'A', label:'Condiciones existentes (Art. 4.2.19)', dens:'—', predio:'Existente',
+        cc:null, cos:null, rasante:'Existente', pisos:null, metros:null,
+        antejardin:'Existente', dist:'Existente', ados:'Existente', agrup:'Existente',
+        nota:'Todas las normas de edificación son las existentes: el Plan solo reconoce las condiciones actuales de las edificaciones emplazadas en esta zona, restringiendo su crecimiento.' }
+    ],
+    notas:[
+      'Destinada a equipamiento de seguridad de tipo cárcel, centros de detención y rehabilitación, más áreas verdes.',
+      'Según el Art. 5.1.3 de la Ordenanza del PRMS, los equipamientos no compatibles con el uso residencial —entre ellos las cárceles— deben emplazarse fuera del Área Urbana Metropolitana, razón por la cual esta zona no admite crecimiento.'
+    ]
+  },
+
+  /* ---------- 3. ZONAS DE ACTIVIDADES PRODUCTIVAS (Art. 4.2.20 y 4.2.21) ---------- */
+
+  'C1': {
+    nombre:'Zona Actividades Productivas y de Servicio de Carácter Industrial Exclusiva N°1', familia:'productiva',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.20)', dens:'—', predio:'4.000 m²',
+        cc:1.2, cos:0.6, rasante:'O.G.U.C.', pisos:2, metros:15,
+        antejardin:'10 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Ancho mínimo de faja vial que enfrenta: 40 m. Cierros: 75% de transparencia hacia la calle, 2 m de altura máxima. Admite industria molesta e inofensiva y centros o patios de acopio con separación y clasificación.' },
+      { t:'B', label:'Sector Chacabuco · industrias molestas', dens:'—', predio:'10.000 m²',
+        cc:0.1, cos:0.1, rasante:'O.G.U.C.', pisos:2, metros:15,
+        antejardin:'15 m', dist:'40 m a medianeros', ados:'—', agrup:'Aislado',
+        nota:'Condición adicional obligatoria para edificaciones de uso industrial clasificadas como molestas en el sector Chacabuco. Arborización obligatoria: mínimo 162 especies arbóreas/há en antejardín y en una faja de al menos 80 m medidos al deslinde con otros predios. Ancho mínimo de faja vial: 40 m.' }
+    ],
+    notas:['Zona exclusiva según el Art. 6.1.3.1 del PRMS. Se prohíbe la vivienda y todas las actividades de manejo, tratamiento, almacenamiento, acopio o disposición de residuos industriales contaminantes y/o sustancias peligrosas.']
+  },
+  'C2': {
+    nombre:'Zona Actividades Productivas y de Servicio de Carácter Industrial Exclusiva N°2', familia:'productiva',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.21)', dens:'—', predio:'4.000 m²',
+        cc:1.2, cos:0.6, rasante:'O.G.U.C.', pisos:2, metros:15,
+        antejardin:'15 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Ancho mínimo de faja vial que enfrenta: 20 m. Cierros: 75% de transparencia hacia la calle, 2 m de altura máxima. Solo industria inofensiva y centro o patio de acopio exclusivo.' },
+      { t:'B', label:'Mayor intensidad · equipamiento comercio y servicios en paño ≥ 4 há', dens:'—', predio:'2.000 m²',
+        cc:2.4, cos:0.4, rasante:'O.G.U.C.', pisos:8, metros:null,
+        antejardin:'10 m', dist:'O.G.U.C.', ados:'O.G.U.C.', agrup:'Aislado',
+        nota:'Solo para usos de Equipamiento de clase Servicios y Comercio, siempre que se desarrollen en un paño de terreno de superficie igual o superior a 4,0 há. Cierros: 75% de transparencia, 2 m de altura máxima.' }
+    ],
+    notas:['Zona exclusiva según el Art. 6.1.3.1 del PRMS. Además de estas normas, la zona queda sujeta a las condiciones y estudios técnicos exigidos por la Ordenanza del PRMS para las Áreas Industriales.']
+  },
+
+  /* ---------- 4. ZONAS DE ÁREAS VERDES (Art. 4.2.22 a 4.2.29) ---------- */
+
+  'E1': {
+    nombre:'Zona Parque Metropolitano', familia:'verde',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.22)', dens:'—', predio:'No se permite subdivisión',
+        cc:0.01, cos:0.01, rasante:'O.G.U.C.', pisos:1, metros:7,
+        antejardin:'—', dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Ocupación de suelo máxima 1%. Cierros: 100% de transparencia hacia la calle, 2 m de altura máxima. Se prohíbe expresamente la vivienda.' }
+    ],
+    notas:[
+      'Áreas verdes de uso público de carácter metropolitano (Art. 5.2.2 del PRMS): C° Los Cóndores, C° Loma Larga, C° Gordo y C° El Bolsón.',
+      'Solo se admiten usos de equipamiento deportivo, de esparcimiento y recreación al aire libre, científico, de culto y cultura, complementarios y compatibles con el carácter de área verde.',
+      'El Municipio puede autorizar instalaciones temporales livianas (ferias artesanales, teatros al aire libre y similares), sujetas a las normas de edificación de la zona.'
+    ]
+  },
+  'E2a': {
+    nombre:'Zona Parque Intercomunal – Parque', familia:'verde',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.23)', dens:'—', predio:'No se permite subdivisión',
+        cc:0.05, cos:0.05, rasante:'O.G.U.C.', pisos:1, metros:7,
+        antejardin:'—', dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Ocupación de suelo máxima 5%. Cierros: 100% de transparencia hacia la calle, 2 m de altura máxima. Se prohíbe expresamente la vivienda.' }
+    ],
+    notas:[
+      'Áreas verdes de uso público o privado según el Art. 5.2.3.1 del PRMS: Estero Colina y Reina Sur.',
+      'Las construcciones solo pueden ser complementarias a los usos permitidos: quioscos de diarios, revistas y confites; juegos infantiles, piletas y similares.'
+    ]
+  },
+  'E2b': {
+    nombre:'Zona Parque Intercomunal – Cerros Islas', familia:'verde',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.24)', dens:'—', predio:'No se permite subdivisión',
+        cc:0.05, cos:0.05, rasante:'O.G.U.C.', pisos:1, metros:7,
+        antejardin:'—', dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Ocupación de suelo máxima 5%. Cierros: 100% de transparencia hacia la calle, 2 m de altura máxima. Se prohíbe expresamente la vivienda.' }
+    ],
+    notas:[
+      'Cerros islas identificados (Art. 5.2.3.2 del PRMS): Cerro La Catana, Cerro La Pedregosa, Cerro Comaico, Cerro La Campana y Cerro Tahuaitaca.',
+      'Los proyectos deben mantener sin edificaciones las cimas de los cerros y conservar inalterable su conformación natural.'
+    ]
+  },
+  'E2c': {
+    nombre:'Zona Parque Intercomunal – Parques Adyacentes a Cauces', familia:'verde',
+    tablas:[],
+    notas:[
+      'Áreas verdes adyacentes al Estero El Cobre y al Estero Santa Margarita (Art. 5.2.3.4 pto. 1 del PRMS). La Ordenanza no fija una tabla de edificación propia: rige lo establecido en el Art. 5.2.3.4 de la Ordenanza del PRMS.',
+      'Ancho mínimo del parque: 40 m medidos a cada borde del cauce. Con estudios técnicos de riesgo de inundación e informe favorable de los organismos competentes, puede reducirse hasta un mínimo de 20 m por borde.',
+      'En cauces rectificados las fajas se refieren al cauce rectificado; en lagunas artificiales, al perímetro o borde de aguas máximo; en entubamientos, al eje del ducto.',
+      'Solo se permiten áreas verdes e instalaciones mínimas complementarias (actividades recreativas y de esparcimiento al aire libre, quioscos, juegos infantiles, piletas y similares). Hasta un 30% del ancho puede destinarse a vialidad.'
+    ]
+  },
+  'E2d': {
+    nombre:'Zona Parque Intercomunal – Parques Adyacentes a Vías', familia:'verde',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.26)', dens:'—', predio:'No se permite subdivisión',
+        cc:0.01, cos:0.01, rasante:'O.G.U.C.', pisos:1, metros:7,
+        antejardin:'—', dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Ocupación de suelo máxima 1%.' }
+    ],
+    notas:[
+      'Parques adyacentes a Av. Paseo Colina Sur, Av. Interprovincial, Av. Radial Nor-Oriente, Av. Del Valle, La Ñipa y Carretera Gral. San Martín (nueva), según el Art. 5.2.3.4 pto. 2 del PRMS.',
+      'Ancho de la faja destinada a parque: 50 m frente a vías metropolitanas, 35 m frente a vías intercomunales principales y 20 m frente a vías intercomunales. Cuando las vías son borde de áreas urbanas o urbanizables, o separan zonas silvoagropecuarias de otras zonas (excepto Áreas de Valor Natural), el ancho se incrementa en un 50%.',
+      'Hasta un 30% del ancho puede destinarse a vialidad. Las construcciones solo pueden ser complementarias a los usos permitidos.'
+    ]
+  },
+  'E2e': {
+    nombre:'Zona Parque Intercomunal – Parques Quebradas', familia:'verde',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.27)', dens:'—', predio:'No se permite subdivisión',
+        cc:0.01, cos:0.01, rasante:'O.G.U.C.', pisos:1, metros:7,
+        antejardin:'—', dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Ocupación de suelo máxima 1%. Se prohíbe expresamente la vivienda.' }
+    ],
+    notas:[
+      'Áreas verdes adyacentes a los cauces de las quebradas identificadas como ON-1 a ON-32 (Art. 5.2.3.3 del PRMS): Campana Poniente y Oriente, La Región, La Negra, Los Cardos, Los Cañones, Los Maitenes, El Bolsón, Las Rosas, El Loro, Piedras Blancas, El Manzano, La Ñipa/El Chingue, Los Cóndores, El Hinojo, Casa de Piedra, Las Brujas, Ladera Sur C° Esmeralda, Totorilla, Rincón Totorilla, Rincón del Rulo, Lo Leiva, Del Pedrero y Ladera Sur C° Quemado.',
+      'El ancho definido para el uso de área verde no puede disminuirse como consecuencia de estudios que reduzcan el ancho del área de restricción de la quebrada (Art. 5.2.3.3 y 8.2.1.1 letra a.1.3 del PRMS).'
+    ]
+  },
+  'E3': {
+    nombre:'Equipamiento Recreacional y Deportivo', familia:'verde',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.28)', dens:'—', predio:'No se permite subdivisión',
+        cc:0.2, cos:0.2, rasante:'O.G.U.C.', pisos:null, metros:null,
+        antejardin:'—', dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Ocupación de suelo máxima 20%. La Ordenanza no fija altura máxima para esta zona. Cuando estas áreas se emplazan paralelas a vías metropolitanas o intercomunales, su ancho mínimo es de 80 m.' }
+    ],
+    notas:[
+      'Áreas de propiedad fiscal, municipal o privada destinadas a actividades deportivas y/o espectáculos de concurrencia masiva (Art. 5.2.4.1 del PRMS): Casas de Chacabuco, Quilapilún, Del Valle, Santa Filomena y Complejo Deportivo Colina.',
+      'La superficie máxima de ocupación con las instalaciones propias y complementarias no puede sobrepasar el 20% del predio. Puede destinarse a otros usos hasta un 20% adicional de la superficie del predio, solo si se aprueba una modificación al PRC que determine las condiciones técnicas específicas.'
+    ]
+  },
+  'E4': {
+    nombre:'Zona Área Verde Comunal', familia:'verde',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.29)', dens:'—', predio:'5.000 m²',
+        cc:0.05, cos:0.05, rasante:'O.G.U.C.', pisos:1, metros:3.5,
+        antejardin:'—', dist:'O.G.U.C.', ados:'—', agrup:'Aislado',
+        nota:'Ocupación de suelo máxima 5%. Ancho mínimo de faja vial que enfrenta: 15 m. Cierros: 100% de transparencia hacia la calle, 2 m de altura máxima. Se prohíbe expresamente la vivienda.' }
+    ],
+    notas:['Áreas verdes de escala local, públicas o privadas, identificadas en los planos de zonificación PRCC-Z1, Z2a, Z2b y Z3. Las construcciones solo pueden ser complementarias a los usos permitidos: quioscos, juegos infantiles, piletas y similares.']
+  },
+
+  /* ---------- ZONA DE CONSERVACIÓN HISTÓRICA (Art. 3.20) ---------- */
+
+  'CH': {
+    nombre:'Zona de Conservación Histórica', familia:'patrimonial',
+    tablas:[],
+    notas:[
+      'Zonas de Conservación Histórica identificadas dentro del límite urbano (Art. 3.20): Medialuna Santa Filomena y San Luis, Casas de Reina Sur, Capilla de Comaico y Casas de Liray.',
+      'No tiene tabla de edificación propia: rigen las normas de la zona de fondo más las condiciones de este artículo. Las intervenciones deben conservar los atributos morfológicos y de imagen identificados en la "ficha de valoración de zona de conservación histórica". Se autorizan restauración, refacciones asociadas a rehabilitación, alteración, reparación, ampliación u obras menores mientras se mantengan esos atributos, así como su división predial.',
+      'Para el cálculo de constructibilidad y ocupación de suelo, la edificación de valor histórico existente se considera parte integrante del proyecto.',
+      'Solo pueden desarrollarse edificaciones nuevas si en el predio queda al menos un 75% de terreno disponible, entendiendo por terreno ocupado el que resulta de aplicar 40% de ocupación máxima a la superficie total de la edificación existente.',
+      'Se prohíbe todo tipo de letreros, luces de neón, fluorescentes o similares sobre las fachadas de las edificaciones históricas.',
+      'La aprobación de loteos o edificación requiere un informe técnico incorporado a la Memoria Explicativa del proyecto (Art. 3.1.5 punto 5 de la O.G.U.C.).'
+    ]
+  },
+
+  /* ---------- 5. ÁREAS DE RIESGO Y RESTRICCIÓN (Art. 4.2.30 a 4.2.36) ---------- */
+
+  'R1': {
+    nombre:'Área de Riesgo de Inundación por Cauces Naturales y Afloramiento de Napas Freáticas', familia:'riesgo',
+    tablas:[
+      { t:'A', label:'Base (Art. 4.2.30)', dens:'—', predio:'No se permite subdivisión',
+        cc:0.01, cos:0.01, rasante:'—', pisos:null, metros:null,
+        antejardin:'—', dist:'—', ados:'—', agrup:'—',
+        nota:'Ocupación de suelo máxima 1,0% y coeficiente de constructibilidad máximo 0,01. No se permite subdivisión del suelo.' }
+    ],
+    notas:[
+      'Terrenos con riesgo de inundación, franjas de protección de ríos y esteros y áreas de riesgo por afloramiento de napas freáticas, identificados en los planos PRCC-R1, R2a, R2b y R3 (Art. 8.2.1.1 letra a del PRMS).',
+      'Usos permitidos: áreas verdes (con paseos peatonales, ciclovías, plazas y similares) y equipamiento recreacional-deportivo y de esparcimiento al aire libre.',
+      'Estas áreas de riesgo pueden disminuirse y/o eliminarse conforme al Art. 3.11 de la Ordenanza, mediante los estudios técnicos que correspondan.'
+    ]
+  },
+  'R2': {
+    nombre:'Área de Riesgo de Inundación por Quebradas', familia:'riesgo',
+    tablas:[],
+    notas:[
+      'Cauces de las quebradas identificadas en el cuadro del Art. 4.2.31 y sus fajas adyacentes, con ancho mínimo de restricción de 40 m a cada borde (quebradas ON-1 a ON-26, en los sectores Chamicero AC-4, Chicureo AC-3, Sta. Filomena AC-2, Sta. Elena AC-1 y Colina Esmeralda A6).',
+      'Las construcciones y urbanizaciones en quebradas requieren estudios y proyectos que aseguren el normal escurrimiento de las aguas y la protección de bordes y laderas, informados favorablemente por los organismos competentes antes de la autorización municipal. La recepción municipal solo procede previa conformidad de esas obras.',
+      'Si de estudios específicos resultan anchos de restricción menores, igual debe respetarse el ancho mínimo de área verde fijado para los "Parques Quebradas" (Art. 5.2.2.3 del PRMS). En las fajas de restricción resultantes solo se permiten áreas verdes, recreación-deporte y esparcimiento-turismo con instalaciones mínimas, sin concentración masiva ni permanencia prolongada de personas.',
+      'Estas áreas de riesgo pueden disminuirse y/o eliminarse conforme al Art. 3.11 de la Ordenanza.'
+    ]
+  },
+  'R3': {
+    nombre:'Área de Riesgo por Remoción en Masa', familia:'riesgo',
+    tablas:[],
+    notas:[
+      'Terrenos de riesgo por sus condiciones topográficas: zonas de remoción en masa, altas pendientes, acantilados, riscos y similares, dentro del límite urbano (Art. 8.2.1.4 letra a del PRMS, plano RM-PRM-96-CH.1.C). Son 9 áreas al interior de las áreas urbanas.',
+      'NO SE PERMITE NINGÚN TIPO DE EDIFICACIÓN ni subdivisión del suelo.',
+      'Usos permitidos: áreas verdes (paseos peatonales, ciclovías, plazas y forestación) y esparcimiento al aire libre con instalaciones mínimas que no impliquen concentración masiva ni permanencia prolongada de personas. Las instalaciones no pueden alterar la topografía del suelo ni el escurrimiento natural de aguas de esteros y/o quebradas.',
+      'Estas áreas de riesgo pueden disminuirse y/o eliminarse conforme al Art. 3.11 de la Ordenanza.'
+    ]
+  }
+};
+
+// El GeoJSON del Geoportal escribe los códigos con guion ("A10-a", "A13-b")
+// y la Ordenanza sin él ("A10a"). Se normaliza quitando guiones y espacios.
+function claveColina(p){
+  var z = (p && p.zona ? p.zona : '').toString().trim();
+  if(PRC_NORMAS_COLINA[z]) return z;
+  return z.replace(/[\s-]/g, '');
+}
+
+/* ---------------------------------------------------------------------------
    LO BARNECHEA — normas embebidas en el propio GeoJSON
    ---------------------------------------------------------------------------
    Acá cada polígono trae sus normas como atributos (no hay tabla aparte que
@@ -1815,6 +2335,11 @@ function normasDe(properties){
     // como separador uso/edificación.
     return PRC_NORMAS_LAFLORIDA[claveLaFlorida(properties)] || null;
   }
+  if(currentComuna === 'Colina'){
+    // Códigos sin "/" y con guiones variables entre GeoJSON y Ordenanza
+    // ("A10-a" vs "A10a"): claveColina() normaliza antes de buscar.
+    return PRC_NORMAS_COLINA[claveColina(properties)] || null;
+  }
   if(currentComuna === 'Ñuñoa'){
     // Igual que La Florida: los códigos de Ñuñoa no usan "/" como separador
     // uso/edificación, así que se busca la zona completa tal cual viene.
@@ -1905,6 +2430,12 @@ function findZonaAt(lat, lng, dataset){
     }
   }
   return null;
+}
+
+// Distintas capas del Geoportal nombran el campo de otra forma: Las Condes y
+// Providencia traen "nombre", la de Colina trae "nombre_zona".
+function nombreZona(p){
+  return (p && (p.nombre || p.nombre_zona || p.n_subzona)) || '';
 }
 
 function esc(s){
@@ -2602,7 +3133,7 @@ function renderZona(feature){
   var html = '';
 
   html += '<div class="prc-zona-code">' + esc(p.zona) + '</div>';
-  html += '<div class="prc-zona-name">' + esc(p.nombre) + '</div>';
+  html += '<div class="prc-zona-name">' + esc(nombreZona(p)) + '</div>';
   html += '<span class="prc-fam-badge" style="background:' + fam.color + '">' + fam.label + '</span>';
 
   // Máximos
@@ -2621,12 +3152,12 @@ function renderZona(feature){
   }
 
   // Tablas de normas
-  var etiquetaNorma = (currentComuna === 'La Florida' || currentComuna === 'Ñuñoa') ? p.zona : sp.edif;
+  var etiquetaNorma = (currentComuna === 'La Florida' || currentComuna === 'Ñuñoa' || currentComuna === 'Colina') ? p.zona : sp.edif;
   html += '<div class="prc-section-lbl">Normas urbanísticas · ' + esc(etiquetaNorma) + '</div>';
   if(!n){
     html += '<div style="font-size:12px;color:var(--text-faint);font-style:italic">Sin normas cargadas para esta zona de edificación.</div>';
   } else if(!n.tablas.length){
-    html += '<div style="font-size:12px;color:var(--text-faint);font-style:italic">Esta zona no tiene tabla de normas propia en el Art. 38.</div>';
+    html += '<div style="font-size:12px;color:var(--text-faint);font-style:italic">Esta zona no tiene tabla de normas de edificación propia en la Ordenanza — ver las condiciones más abajo.</div>';
   } else {
     n.tablas.forEach(function(tb, i){
       var esBase = (tb.t === 'A');
@@ -2860,7 +3391,7 @@ function renderTerrenoCard(f, t){
     '<div class="prc-terr-zona">' +
       '<span class="prc-rank-dot" style="background:' + fam.color + '"></span>' + esc(p.zona) +
     '</div>' +
-    '<div class="prc-terr-name">' + esc(p.nombre) + '</div>';
+    '<div class="prc-terr-name">' + esc(nombreZona(p)) + '</div>';
 
   if(m && (m.cc || m.pisos)){
     html += '<div class="prc-terr-grid">' +
